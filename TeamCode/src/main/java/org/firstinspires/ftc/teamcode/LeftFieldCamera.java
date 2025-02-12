@@ -31,7 +31,6 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -185,10 +184,8 @@ public class LeftFieldCamera extends LinearOpMode {
     
         // Optional: Give the pipeline a moment to update
         sleep(1000);
-    
-        alignSample();
 
-        /*
+        //RUNNING AUTONOMOUS STEPS//
         //Making sure pincher is closed
         closePinch();
         
@@ -196,43 +193,48 @@ public class LeftFieldCamera extends LinearOpMode {
         frontArm.setPower(-0.5);
         sleep(250);
         
-        //Following is the Autonomous Steps:
-        //sleep(29000);//For Testing Purposes
-        
-        liftUp(1.0, 1390, 4);
-        right(driveSpeed, 6, 2);
-        turnLeft(driveSpeed, 8.5, 2);
-        right(driveSpeed, 13.5, 3);
-        forward(driveSpeed, 18, 5);
-        moveArm(0.2, 0.1);
-        sleep(150);
-        openPinch();
-        frontArm.setPower(-0.5);
-        
-        backward(driveSpeed, 9, 3);
-        liftDown(1.0, 1255, 4);
-        turnRight(driveSpeed, 29.8, 3);
-        left(driveSpeed, 0.3, 1);
-        moveArm(0.3, 0.6);
-        forward(driveSpeed, 8.2, 3);
-        backward(driveSpeed, 2.1, 2);
-        sleep(250);
-        closePinch();
-        sleep(250);
-        moveArm(-0.8, 0.8);
-        frontArm.setPower(-0.5);
-        turnLeft(driveSpeed, 33, 3);
-        left(driveSpeed, 3, 2);
-        liftUp(1.0, 1255, 4);
-        forward(driveSpeed, 14, 3);
-        sleep(150);
-        moveArm(0.2, 0.1);
-        sleep(150);
-        openPinch();
-        frontArm.setPower(-0.5);
-        backward(driveSpeed, 5, 1);
-        liftDown(1.0, 1340, 4);
-        turnRight(driveSpeed, 29.5, 3);
+        //Following is Main the Autonomous Steps:
+
+        //Step 1: Lift the arm up and move to basket
+        liftUp(1.0, 600, 4);//Lift arm up to be ready to drop sample in higher basket
+        right(driveSpeed, 6, 2);//Move to the right to be away from the wall
+        turnLeft(driveSpeed, 8.5, 2);//Turn to face the basket
+        right(driveSpeed, 13.5, 3);//Move to face the basket
+        forward(driveSpeed, 18, 5);//move to basket
+        moveArm(0.2, 0.1);//Move arm out to drop sample
+        sleep(150);//wait for arm to move
+        openPinch();//Open pinch to drop sample
+        frontArm.setPower(-0.5);//Set arm power to move back and keep it there
+
+        //Step 2: Move into position to pick up sample
+        backward(driveSpeed, 9, 3);//move away from basket
+        liftDown(1.0, 300, 4);//bring lift down
+        turnRight(driveSpeed, 29.8, 3);//Turn to face sample
+        left(driveSpeed, 0.3, 1);//Small adjustment to face sample
+        moveArm(0.3, 0.6);//Move arm out to pick up sample
+        forward(driveSpeed, 8.2, 3);//Move to sample
+        alignSample();//Align with sample using camera
+
+        //Step 3: Pick up sample and move to basket
+        sleep(250);//wait for robot to stop moving
+        closePinch();//close pinch to pick up sample
+        sleep(250);//wait for pinch to close
+        moveArm(-0.8, 0.8);//Move arm back in
+        frontArm.setPower(-0.5);//Set arm power to move back and keep it there
+        turnLeft(driveSpeed, 33, 3);//turn to face basket
+        left(driveSpeed, 3, 2);//line up with basket
+        liftUp(1.0, 300, 4);//Lift arm up to drop sample
+        forward(driveSpeed, 14, 3);//Move to basket
+
+        //Step 4: Drop sample and move to next sample
+        sleep(150);//wait for robot to stop moving
+        moveArm(0.2, 0.1);//Move arm out to drop sample
+        sleep(150);//wait for arm to move
+        openPinch();//Open pinch to drop sample
+        frontArm.setPower(-0.5);//Set arm power to move back and keep it there
+        backward(driveSpeed, 5, 1);//Move back from basket
+        liftDown(1.0, 300, 4);//Bring lift down
+        turnRight(driveSpeed, 29.5, 3);//Turn to face next sample
         
         //Stop Motors
         stopDrive();
@@ -885,7 +887,7 @@ public class LeftFieldCamera extends LinearOpMode {
     
     /*Time Functions*/
     //Function to wait specified time in seconds without stopping robot.
-    private double waitWhile(double time){
+    private void waitWhile(double time){
         
         runtime.reset();
         
@@ -893,8 +895,6 @@ public class LeftFieldCamera extends LinearOpMode {
             telemetry.addData("Path", " %4.1f S Elapsed", runtime.seconds());
             telemetry.update();
         }
-        
-        return runtime.seconds();
     }
     
     /*Pincher Functions*/
