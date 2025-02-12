@@ -139,8 +139,8 @@ public class LeftFieldFeedback extends LinearOpMode {
         rightBackDrive.setPower(0);
 
         // Send telemetry message to signify robot waiting;
-        telemetry.addData("Drive CPI = ", COUNTS_PER_INCH);
-        telemetry.addData("Status", "Ready to run");    //
+        telemetry.addData("Drive CPI = ", COUNTS_PER_INCH);//Display the counts per inch for the drive motors encoders in telemetry
+        telemetry.addData("Status", "Ready to run");    //Display the status of the robot in telemetry
         telemetry.update();
         
         //Close Pincher to Ready Robot
@@ -168,30 +168,30 @@ public class LeftFieldFeedback extends LinearOpMode {
         openPinch();//Open Pincher to drop off sample
         frontArm.setPower(-0.5);//Move arm back in
         
-        backward(driveSpeed, 9, 3);
-        liftDown(1.0, 1255, 4);
-        turnRight(driveSpeed, 29.8, 3);
-        left(driveSpeed, 0.3, 1);
-        moveArm(0.3, 0.6);
-        forward(driveSpeed, 8.2, 3);
-        backward(driveSpeed, 2.1, 2);
-        sleep(250);
-        closePinch();
-        sleep(250);
-        moveArm(-0.8, 0.8);
-        frontArm.setPower(-0.5);
-        turnLeft(driveSpeed, 33, 3);
-        left(driveSpeed, 3, 2);
-        liftUp(1.0, 1255, 4);
-        forward(driveSpeed, 14, 3);
-        sleep(150);
-        moveArm(0.2, 0.1);
-        sleep(150);
-        openPinch();
-        frontArm.setPower(-0.5);
-        backward(driveSpeed, 5, 1);
-        liftDown(1.0, 1340, 4);
-        turnRight(driveSpeed, 29.5, 3);
+        backward(driveSpeed, 9, 3);//Move away from basket
+        liftDown(1.0, 400, 4);//Lower lift to position to pick up sample
+        turnRight(driveSpeed, 29.8, 3);//Turn to face sample
+        left(driveSpeed, 0.3, 1);//Move to align with sample
+        moveArm(0.3, 0.6);//Move arm out to pick up sample
+        forward(driveSpeed, 8.2, 3);//Move to pick up sample
+        backward(driveSpeed, 2.1, 2);//Small adjustment to pick up sample
+        sleep(250);//Give robot time to stop moving
+        closePinch();//Close Pincher to pick up sample
+        sleep(250);//Give pinchers time to pick up sample
+        moveArm(-0.8, 0.8);//Move arm back in
+        frontArm.setPower(-0.5);//Keep arm in by setting power to -0.5
+        turnLeft(driveSpeed, 33, 3);//Turn to face basket
+        left(driveSpeed, 3, 2);//Move to align with basket
+        liftUp(1.0, 400, 4);//Raise lift to highest position
+        forward(driveSpeed, 14, 3);//Move to basket
+        sleep(150);//Give robot time to stop moving
+        moveArm(0.2, 0.1);//Move arm out to drop off sample
+        sleep(150);//Give arm time to move
+        openPinch();//Open Pincher to drop off sample
+        frontArm.setPower(-0.5);//Move arm back in
+        backward(driveSpeed, 5, 1);//Move away from basket
+        liftDown(1.0, 640, 4);//Lower lift to lowest position
+        turnRight(driveSpeed, 29.5, 3);//Turn to face next sample
         
         //Stop Motors
         stopDrive();
