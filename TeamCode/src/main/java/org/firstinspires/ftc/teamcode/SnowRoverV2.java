@@ -46,7 +46,32 @@ public class SnowRoverV2 extends LinearOpMode {
     private static final int LIFT_LOWER_LIMIT = 1;
     private static final double SLOW_DRIVE_SCALE = 1.0 / 3.0;
     private static final long BUTTON_DEBOUNCE_MS = 150;
-    
+    //Mechanum Variables
+    double max;
+
+    double axial;
+    double lateral;
+    double yaw;
+
+    double leftFrontPower;
+    double rightFrontPower;
+    double leftBackPower;
+    double rightBackPower;
+
+    //Slow Drive State
+    int slowDrive = 0;
+
+    int pinchState = 1;
+
+    //Variables for arm
+    double armCPR = 288;
+
+    //Pincher Finger Postion
+    double pinchPos = 0.0;
+    double pinch2Pos = 0.0;
+
+    //Arm Motor Power
+    double armPower;
     public void mechanum(){
         
         if((gamepad1.left_stick_y!=0)||(gamepad1.right_stick_x!=0)||(gamepad1.right_trigger!=0)||(gamepad1.left_trigger!=0)){
@@ -89,8 +114,10 @@ public class SnowRoverV2 extends LinearOpMode {
     }
     
     public void toggleSlowDrive() {
-    slowDrive = (slowDrive == 0) ? 1 : 0;
-    // Optional: Add telemetry feedback if needed.
+        slowDrive = (slowDrive == 0) ? 1 : 0;
+        // Optional: Add telemetry feedback if needed.
+        telemetry.addData("Slow Drive", slowDrive == 1 ? "Enabled" : "Disabled");
+        telemetry.update();
     }
 
     public void togglePincher(){
@@ -114,36 +141,11 @@ public class SnowRoverV2 extends LinearOpMode {
     Servo rightPinch;
     Servo leftPinch;
     
-    //Sensors
-    TouchSensor armLimit;
-    TouchSensor liftReset;
+    //Sensors Declarations(not used at the moment)
+    //TouchSensor armLimit;
+    //TouchSensor liftReset;
     
-    //Mechanum Variables
-    double max;
-    
-    double axial;
-    double lateral;
-    double yaw;
-    
-    double leftFrontPower;
-    double rightFrontPower;
-    double leftBackPower;
-    double rightBackPower;
-    
-    //Slow Drive State
-    int slowDrive = 0;
-    
-    int pinchState = 1;
-    
-    //Variables for arm
-    double armCPR = 288;
-    
-    //Pincher Finger Postion
-    double pinchPos = 0.0;
-    double pinch2Pos = 0.0;
-    
-    //Arm Motor Power
-    double armPower;
+
     
 
     @Override
