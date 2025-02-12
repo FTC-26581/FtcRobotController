@@ -195,8 +195,10 @@ public class LeftFieldCamera extends LinearOpMode {
             Point sampleCenter = pipeline.getSampleCenter();  // Assumes your pipeline provides this
             if (sampleCenter != null) {
                 double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
+                double errorY = sampleCenter.y - 120;  // 120 = center of a 240-pixel tall image
                 telemetry.addData("Sample Center", sampleCenter.toString());
                 telemetry.addData("Error X", errorX);
+                telemetry.addData("Error Y", errorY);
                 telemetry.update();
                 
                 // Check if sample is aligned (within 10 pixels)
@@ -206,15 +208,23 @@ public class LeftFieldCamera extends LinearOpMode {
                     break;  // Exit the loop when aligned
                 }
                 
-                // Adjust position: if errorX is positive, sample is to the right, so move left; if negative, move right.
+                // Adjust X position: if errorX is positive, sample is to the right, so move left; if negative, move right.
                 if (errorX > 0) {
-                    // Move left slightly. Adjust speed, distance, and timeout as needed.
+                    // Move left slightly. Adjust speed, distance, and timeout.
                     left(0.3, 0.5, 1);
                 } else {
                     // Move right slightly.
                     right(0.3, 0.5, 1);
                 }
+                //Adjust Y Posistion:
+                if (errorY > 0) {
+                    //Move forward slightly
+                    forward(0.3, 0.5, 1);
+                } else {
+                    //Move backward slightly
+                    backward(0.3, 0.5, 1);  
             } else {
+                //If there is no sample detected then
                 telemetry.addData("Vision", "Sample not detected");
                 telemetry.update();
             }
