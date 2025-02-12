@@ -29,9 +29,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.hardware.TouchSensor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -143,9 +141,6 @@ public class SnowRoverV2 extends LinearOpMode {
     //Pincher Finger Postion
     double pinchPos = 0.0;
     double pinch2Pos = 0.0;
-    
-    //Arm Servo Position
-    double armPitch = 0.0;
     
     //Arm Motor Power
     double armPower;
@@ -379,34 +374,9 @@ public class SnowRoverV2 extends LinearOpMode {
         frontArm.setPower(0.0);
     }
     
-        /*Drive Control and Calculation Functions*/
-    //Calculate Power for Motors using the axial, lateral & yaw variables.
-    public void calcPower() {
-        
-        // Combine the control requests for each axis-motion to determine each wheel's power.
-        // Set up a variable for each drive wheel to save the power level for telemetry.
-        leftFrontPower  = axial + lateral + yaw;
-        rightFrontPower = axial - lateral - yaw;
-        leftBackPower   = axial - lateral + yaw;
-        rightBackPower  = axial + lateral - yaw;
-
-        // Normalize the values so no wheel power exceeds 100%
-        // This ensures that the robot maintains the desired motion.
-        max = Math.max(Math.abs(leftFrontPower), Math.abs(rightFrontPower));
-        max = Math.max(max, Math.abs(leftBackPower));
-        max = Math.max(max, Math.abs(rightBackPower));
-
-        if (max > 1.0) {
-            leftFrontPower  /= max;
-            rightFrontPower /= max;
-            leftBackPower   /= max;
-            rightBackPower  /= max;
-        }
-    }
-    
     /*Time Functions*/
     //Function to wait specified time in seconds without stopping robot.
-    private double waitWhile(double time){
+    private void waitWhile(double time){
         
         runtime.reset();
         
@@ -414,8 +384,7 @@ public class SnowRoverV2 extends LinearOpMode {
             telemetry.addData("Path", " %4.1f S Elapsed", runtime.seconds());
             telemetry.update();
         }
-        
-        return runtime.seconds();
+
     }
 }
 
