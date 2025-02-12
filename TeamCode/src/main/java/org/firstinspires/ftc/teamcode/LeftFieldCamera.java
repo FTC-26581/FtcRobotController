@@ -76,7 +76,7 @@ public class LeftFieldCamera extends LinearOpMode {
     static double rightBackPower;
 
     //Setup Runtime
-    private ElapsedTime     runtime = new ElapsedTime();
+    private final ElapsedTime     runtime = new ElapsedTime();
     
     //Declare Mechanum Drive Math Variables
     double max;
@@ -208,12 +208,13 @@ public class LeftFieldCamera extends LinearOpMode {
 
         //Step 2: Move into position to pick up sample
         backward(driveSpeed, 9, 3);//move away from basket
-        liftDown(1.0, 300, 4);//bring lift down
+        liftDown(1.0, 300, 3);//bring lift down
         turnRight(driveSpeed, 29.8, 3);//Turn to face sample
         left(driveSpeed, 0.3, 1);//Small adjustment to face sample
         moveArm(0.3, 0.6);//Move arm out to pick up sample
         forward(driveSpeed, 8.2, 3);//Move to sample
-        alignSample();//Align with sample using camera
+        alignSample(5.0);//Align with sample using camera
+        liftDown(1.0, 200, 3);//Bring lift down to pick up sample
 
         //Step 3: Pick up sample and move to basket
         sleep(250);//wait for robot to stop moving
@@ -250,13 +251,15 @@ public class LeftFieldCamera extends LinearOpMode {
     //circumference = 11.87 inches 
 
     /*Feedback Control Functions*/
-    public void alignSample() {
+    public void alignSample(double timeout) {
         // Vision-based alignment: adjust lateral position until the sample is centered
         telemetry.addData("Vision", "Aligning with sample...");
         telemetry.update();
 
+        runtime.reset();
+
         // Loop until the sample is centered within a tolerance(10 pixels)
-        while (opModeIsActive()) {
+        while (opModeIsActive()&& runtime.seconds() < timeout) {
             Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
             if (sampleCenter != null) {
                 double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
@@ -702,7 +705,7 @@ public class LeftFieldCamera extends LinearOpMode {
         leftPinch.setPosition(0.0);
     }
 
-
+//Moves the arm for a specified time with a specified power
     private void moveArm(double power, double time){
         frontArm.setPower(power);
         sendPower();
