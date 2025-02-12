@@ -325,7 +325,6 @@ public class SnowRoverV2 extends LinearOpMode {
             telemetry.addData("Arm Revolutions", armRevs);
             telemetry.addData("Arm Angle(degrees)", armAngle);
             telemetry.addData("Arm Normalized(degrees)", armNorm);
-            //telemetry.addData("Arm Target", tgtArmPos);
             telemetry.update();
         }
     }
