@@ -29,7 +29,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.hardware.TouchSensor;
+//import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -66,7 +66,7 @@ public class SnowRoverV2 extends LinearOpMode {
     //Variables for arm
     double armCPR = 288;
 
-    //Pincher Finger Postion
+    //Pincher Finger Position
     double pinchPos = 0.0;
     double pinch2Pos = 0.0;
 
@@ -75,7 +75,7 @@ public class SnowRoverV2 extends LinearOpMode {
     public void mechanum(){
         
         if((gamepad1.left_stick_y!=0)||(gamepad1.right_stick_x!=0)||(gamepad1.right_trigger!=0)||(gamepad1.left_trigger!=0)){
-            // POV Mode uses left joystick to go forward, and right joystick to rotate, and tringers to strafe.
+            // POV Mode uses left joystick to go forward, and right joystick to rotate, and triggers to strafe.
             axial   = gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
             lateral =  -(gamepad1.right_trigger-gamepad1.left_trigger);
             yaw     =  -gamepad1.right_stick_x;
@@ -320,8 +320,6 @@ public class SnowRoverV2 extends LinearOpMode {
             telemetry.addData("Pincher Position", pinchPos);
             telemetry.addData("Right Lift Ticks", rightHexLift.getCurrentPosition());
             telemetry.addData("Left Lift Ticks", leftHexLift.getCurrentPosition());
-            //telemetry.addData("Arm Right Servo", rightArm.getPosition());
-            //telemetry.addData("Arm Left Servo", leftArm.getPosition());
             telemetry.addData("Arm Power", frontArm.getPower());
             telemetry.addData("Arm Position", armPos);
             telemetry.addData("Arm Revolutions", armRevs);

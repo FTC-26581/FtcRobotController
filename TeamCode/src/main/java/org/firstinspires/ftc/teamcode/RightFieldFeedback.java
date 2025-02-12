@@ -31,7 +31,6 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -71,7 +70,7 @@ public class RightFieldFeedback extends LinearOpMode {
     static double rightBackPower;
 
     //Setup Runtime
-    private ElapsedTime     runtime = new ElapsedTime();
+    private final ElapsedTime     runtime = new ElapsedTime();
     
     //Declare Mechanum Drive Math Variables
     double max;
@@ -79,14 +78,14 @@ public class RightFieldFeedback extends LinearOpMode {
     double lateral;
     double yaw;
     
-    //Liftpower
+    //Lift power
     double liftPower = 0.0;
     
     int globalSleep = 250;
 
     double globalCorrection = 1.084;
 
-    //Main Opmode Code \/
+    //Main OpMode Code \/
     @Override
     public void runOpMode() {
 
@@ -527,7 +526,7 @@ public class RightFieldFeedback extends LinearOpMode {
         }
     }
     
-    //Send The Calulated Power from calcPower Function.
+    //Send The Calculated Power from calcPower Function.
     public void sendPower() {
         calcPower();
         
@@ -561,7 +560,7 @@ public class RightFieldFeedback extends LinearOpMode {
     
     /*Time Functions*/
     //Function to wait specified time in seconds without stopping robot.
-    private double waitWhile(double time){
+    private void waitWhile(double time){
         
         runtime.reset();
         
@@ -569,8 +568,6 @@ public class RightFieldFeedback extends LinearOpMode {
             telemetry.addData("Path", " %4.1f S Elapsed", runtime.seconds());
             telemetry.update();
         }
-        
-        return runtime.seconds();
     }
     
     /*Pincher Functions*/
@@ -589,42 +586,7 @@ public class RightFieldFeedback extends LinearOpMode {
     }
     
     
-    /*Timed Drive Functions*/
-    private void driveAxial(double power, double time){
-        axial = power;
-        sendPower();
-        waitWhile(time);
-        stopDrive();
-        
-    }
-    
-    private void driveLateral(double power, double time){
-        lateral = power;
-        sendPower();
-        waitWhile(time);
-        stopDrive();
-        
-    }
-    
-    private void lift(double power, double time){
-        liftPower = power;
-        sendPower();
-        waitWhile(time);
-        liftPower = 0;
-        sendPower();
-        
-    }
-    
-    private void correctYaw(double power, double time){
-        yaw = power;
-        sendPower();
-        waitWhile(time);
-        yaw = 0.0;
-        sendPower();
-        stopDrive();
-        
-    }
-    
+    /*Timed Movement Functions*/
     private void moveArm(double power, double time){
         frontArm.setPower(power);
         sendPower();
