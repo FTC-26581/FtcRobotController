@@ -39,7 +39,6 @@ import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.opencv.core.Point;
-import org.firstinspires.ftc.teamcode.SampleDetectionPipeline;
 
 
 @Autonomous(name="LeftFieldCamera", group="Robot")
@@ -89,13 +88,13 @@ public class LeftFieldCamera extends LinearOpMode {
     
     int globalSleep = 250;
     
-    double globalCorection = 1.084;
+    double globalCorrection = 1.084;
     
     // Declare the webcam and pipeline objects
     private OpenCvCamera webcam;
     private SampleDetectionPipeline pipeline;
 
-    //Main Opmode Code \/
+    //Main OpMode Code \/
     @Override
     public void runOpMode() {
 
@@ -284,7 +283,7 @@ public class LeftFieldCamera extends LinearOpMode {
                     // Move right slightly.
                     right(0.3, 0.5, 1);
                 }
-                //Adjust Y Posistion:
+                //Adjust Y Position:
                 if (errorY > 0) {
                     //Move forward slightly
                     forward(0.3, 0.5, 1);
@@ -368,7 +367,7 @@ public class LeftFieldCamera extends LinearOpMode {
         if(opModeIsActive()){
             
             //Set Target Variables
-            target = (int)(inches*COUNTS_PER_INCH*(globalCorection-0.05));
+            target = (int)(inches*COUNTS_PER_INCH*(globalCorrection -0.05));
             liftTarget = ticks;
             
             //Set Target Positions
@@ -449,7 +448,7 @@ public class LeftFieldCamera extends LinearOpMode {
         if(opModeIsActive()){
             
             //Set Target Variables
-            target = (int)(inches*COUNTS_PER_INCH*(globalCorection-0.05));
+            target = (int)(inches*COUNTS_PER_INCH*(globalCorrection -0.05));
             liftTarget = ticks;
             
             //Set Target Positions
@@ -515,34 +514,34 @@ public class LeftFieldCamera extends LinearOpMode {
 
     public void forward(double speed, double inches, int timeout) {
         // For forward movement, all motors move the same direction.
-        int target = (int)(inches * COUNTS_PER_INCH * (globalCorection - 0.05));
+        int target = (int)(inches * COUNTS_PER_INCH * (globalCorrection - 0.05));
         runDrive(target, target, target, target, speed, timeout);
     }
 
     public void backward(double speed, double inches, int timeout) {
-        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, -target, -target, -target, speed, timeout);
     }
 
     public void right(double speed, double inches, int timeout) {
-        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         // For right strafe the front left and back right go forward; the other two go in reverse.
         runDrive(target, -target, -target, target, speed, timeout);
     }
 
     public void left(double speed, double inches, int timeout) {
-        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, target, target, -target, speed, timeout);
     }
 
     public void turnRight(double speed, double inches, int timeout) {
-        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         // For turning right, the left motors move forward and right motors move backward.
         runDrive(target, -target, target, -target, speed, timeout);
     }
 
     public void turnLeft(double speed, double inches, int timeout) {
-        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, target, -target, target, speed, timeout);
     }
 
@@ -649,7 +648,7 @@ public class LeftFieldCamera extends LinearOpMode {
         }
     }
     
-    //Send The Calulated Power from calcPower Function.
+    //Send The Calculated Power from calcPower Function.
     public void sendPower() {
         calcPower();
         

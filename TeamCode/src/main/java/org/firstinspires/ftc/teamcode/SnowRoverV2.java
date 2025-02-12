@@ -107,13 +107,7 @@ public class SnowRoverV2 extends LinearOpMode {
     boolean prevPinchToggle = false;
 
     // Declare OpMode members for DC motors.
-    private ElapsedTime runtime = new ElapsedTime();
-    private DcMotor leftFrontDrive = null;
-    private DcMotor leftBackDrive = null;
-    private DcMotor rightFrontDrive = null;
-    private DcMotor rightBackDrive = null;
-    private DcMotor rightHexLift = null;
-    private DcMotor leftHexLift = null;
+    private final ElapsedTime runtime = new ElapsedTime();
     private DcMotor frontArm = null;
     
     //Define Servos//
@@ -164,18 +158,18 @@ public class SnowRoverV2 extends LinearOpMode {
         // to the names assigned during the robot configuration step on the DS or RC devices.
         
         //DC Motor Mapping and Power Behavior
-        leftFrontDrive  = hardwareMap.get(DcMotor.class, "leftFront");
-        leftBackDrive  = hardwareMap.get(DcMotor.class, "leftBack");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "rightFront");
-        rightBackDrive = hardwareMap.get(DcMotor.class, "rightBack");
+        DcMotor leftFrontDrive = hardwareMap.get(DcMotor.class, "leftFront");
+        DcMotor leftBackDrive = hardwareMap.get(DcMotor.class, "leftBack");
+        DcMotor rightFrontDrive = hardwareMap.get(DcMotor.class, "rightFront");
+        DcMotor rightBackDrive = hardwareMap.get(DcMotor.class, "rightBack");
         
         leftFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        
-        rightHexLift  = hardwareMap.get(DcMotor.class, "rightLift");
-        leftHexLift  = hardwareMap.get(DcMotor.class, "leftLift");
+
+        DcMotor rightHexLift = hardwareMap.get(DcMotor.class, "rightLift");
+        DcMotor leftHexLift = hardwareMap.get(DcMotor.class, "leftLift");
         
         leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);  
