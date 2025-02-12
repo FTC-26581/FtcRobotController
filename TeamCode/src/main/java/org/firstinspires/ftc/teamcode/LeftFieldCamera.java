@@ -83,7 +83,7 @@ public class LeftFieldCamera extends LinearOpMode {
     double lateral;
     double yaw;
     
-    //Liftpower
+    //Lift power
     double liftPower = 0.0;
     
     int globalSleep = 250;
