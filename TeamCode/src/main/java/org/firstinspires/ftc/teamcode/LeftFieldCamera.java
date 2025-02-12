@@ -147,22 +147,26 @@ public class LeftFieldCamera extends LinearOpMode {
         leftBackDrive.setPower(0);
         rightBackDrive.setPower(0);
         
-        // Initialize the webcam and pipeline
+        // Initialize the webcam and pipeline.
+        //cameraMonitorViewId is the container we will use to display the camera stream
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        //Set the webcam object to the instance of the webcam
+        //Make sure to change the name of the webcam to the one you are using("Webcam 1" is the default name).
         webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
     
         // Initializes our custom pipeline. (Make sure SampleDetectionPipeline is available.)
-        pipeline = new SampleDetectionPipeline();
-        webcam.setPipeline(pipeline);
+        pipeline = new SampleDetectionPipeline();//Create a new SampleDetectionPipeline object and names it pipeline.
+        webcam.setPipeline(pipeline);//Sets the pipeline to to use.
     
-        // Open the camera asynchronously
+        // Open the camera asynchronously. Asynchronous means that the camera will start opening in the background and your program will continue executing.
         webcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
-            @Override
+            @Override//Override the onOpened method. Overriding is the action of defining a new behavior for a method in the subclass.
             public void onOpened() {
                 // Start streaming at 320x240. Adjust resolution as needed.
-                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
+                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);//Starts streaming the camera feed.
          }
             @Override
+            //On error method is called when an error occurs.
             public void onError(int errorCode) {
                 telemetry.addData("Camera Error", errorCode);
                 telemetry.update();
@@ -171,8 +175,8 @@ public class LeftFieldCamera extends LinearOpMode {
 
 
         // Send telemetry message to signify robot waiting;
-        telemetry.addData("Drive CPI = ", COUNTS_PER_INCH);
-        telemetry.addData("Status", "Ready to run");    //
+        telemetry.addData("Drive CPI = ", COUNTS_PER_INCH); //Counts Per Inch is displayed for debugging purposes.
+        telemetry.addData("Status", "Ready to run");    //Displays "Ready to run" on telemetry
         telemetry.update();
         
         //Close Pincher to Ready Robot
