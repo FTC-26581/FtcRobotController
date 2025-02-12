@@ -299,6 +299,55 @@ public class LeftFieldCamera extends LinearOpMode {
         }
     }
 
+    /**
+     * Drives the robot by setting target positions for each drive motor.
+     *
+     * @param lfTarget  target position for left front motor
+     * @param rfTarget  target position for right front motor
+     * @param lbTarget  target position for left back motor
+     * @param rbTarget  target position for right back motor
+     * @param speed     motor power (0 to 1)
+     * @param timeout   timeout (in seconds) before giving up
+     */
+    private void runDrive(int lfTarget, int rfTarget, int lbTarget, int rbTarget, double speed, double timeout) {
+        // Reset encoders
+        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        // Set target positions
+        leftFrontDrive.setTargetPosition(lfTarget);
+        rightFrontDrive.setTargetPosition(rfTarget);
+        leftBackDrive.setTargetPosition(lbTarget);
+        rightBackDrive.setTargetPosition(rbTarget);
+
+        // Set mode to RUN_TO_POSITION
+        leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // Start motors
+        runtime.reset();
+        leftFrontDrive.setPower(speed);
+        rightFrontDrive.setPower(speed);
+        leftBackDrive.setPower(speed);
+        rightBackDrive.setPower(speed);
+
+        // Wait until motors reach target or timeout is reached.
+        while (opModeIsActive() && runtime.seconds() < timeout &&
+                (leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || leftBackDrive.isBusy() || rightBackDrive.isBusy())) {
+            telemetry.addData("Target", "LF: %d | RF: %d | LB: %d | RB: %d", lfTarget, rfTarget, lbTarget, rbTarget);
+            telemetry.addData("Current", "LF: %d | RF: %d | LB: %d | RB: %d",
+                    leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition(),
+                    leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
+            telemetry.update();
+        }
+        stopDrive();  // Stop all motors.
+        sleep(globalSleep);
+    }
+
     public void forwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, int timeout){
         
         //Stop and Reset Encoders
@@ -339,8 +388,10 @@ public class LeftFieldCamera extends LinearOpMode {
             
             //Reset Runtime
             runtime.reset();
-            
-            while (opModeIsActive() && (leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || leftBackDrive.isBusy() || rightBackDrive.isBusy()) || (leftHexLift.isBusy() || rightHexLift.isBusy()) && (runtime.seconds() < timeout)) {
+
+            while (opModeIsActive() && runtime.seconds() < timeout &&
+                    ((leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || leftBackDrive.isBusy() || rightBackDrive.isBusy()) ||
+                            (leftHexLift.isBusy() || rightHexLift.isBusy()))) {
                 
                 if(runtime.seconds() >= driveDelay){
                     leftFrontDrive.setPower(speed);
@@ -418,8 +469,10 @@ public class LeftFieldCamera extends LinearOpMode {
             
             //Reset Runtime
             runtime.reset();
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftFrontDrive.isBusy() && rightFrontDrive.isBusy() && leftBackDrive.isBusy() && rightBackDrive.isBusy()) && (leftHexLift.isBusy() && rightHexLift.isBusy())) {
+
+            while (opModeIsActive() && runtime.seconds() < timeout &&
+                    ((leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || leftBackDrive.isBusy() || rightBackDrive.isBusy()) ||
+                            (leftHexLift.isBusy() || rightHexLift.isBusy()))) {
                 
                 if(runtime.seconds() >= driveDelay){
                     leftFrontDrive.setPower(speed);
@@ -456,301 +509,41 @@ public class LeftFieldCamera extends LinearOpMode {
         }
         
     }
-    
-    public void forward(double speed, double inches, int timeout){
-        
-        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        int target;
-        
-        if(opModeIsActive()){
-            
-            target = (int)(inches*COUNTS_PER_INCH*(globalCorection-0.05));
-            
-            leftFrontDrive.setTargetPosition(target);
-            rightFrontDrive.setTargetPosition(target);
-            leftBackDrive.setTargetPosition(target);
-            rightBackDrive.setTargetPosition(target);
-            
-            leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            runtime.reset();
-            leftFrontDrive.setPower(speed);
-            rightFrontDrive.setPower(speed);
-            leftBackDrive.setPower(speed);
-            rightBackDrive.setPower(speed);
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftFrontDrive.isBusy() && rightFrontDrive.isBusy() && leftBackDrive.isBusy() && rightBackDrive.isBusy())) {
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d", target);
-                telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
-                telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            //Stop Drive Motors
-            leftFrontDrive.setPower(0);
-            rightFrontDrive.setPower(0);
-            leftBackDrive.setPower(0);
-            rightBackDrive.setPower(0);
-            
-            sleep(globalSleep);
-            
-        }
-        
+
+    public void forward(double speed, double inches, int timeout) {
+        // For forward movement, all motors move the same direction.
+        int target = (int)(inches * COUNTS_PER_INCH * (globalCorection - 0.05));
+        runDrive(target, target, target, target, speed, timeout);
     }
-    
-    public void backward(double speed, double inches, int timeout){
-        
-        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        int target;
-        
-        if(opModeIsActive()){
-            
-            target = (int)(inches*COUNTS_PER_INCH*globalCorection);
-            
-            leftFrontDrive.setTargetPosition(-target);
-            rightFrontDrive.setTargetPosition(-target);
-            leftBackDrive.setTargetPosition(-target);
-            rightBackDrive.setTargetPosition(-target);
-            
-            leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            runtime.reset();
-            leftFrontDrive.setPower(speed);
-            rightFrontDrive.setPower(speed);
-            leftBackDrive.setPower(speed);
-            rightBackDrive.setPower(speed);
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftFrontDrive.isBusy() && rightFrontDrive.isBusy() && leftBackDrive.isBusy() && rightBackDrive.isBusy())) {
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d", target);
-                telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
-                telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            //Stop Drive Motors
-            leftFrontDrive.setPower(0);
-            rightFrontDrive.setPower(0);
-            leftBackDrive.setPower(0);
-            rightBackDrive.setPower(0);
-            
-            sleep(globalSleep);
-            
-        }
-        
+
+    public void backward(double speed, double inches, int timeout) {
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        runDrive(-target, -target, -target, -target, speed, timeout);
     }
-    
-    public void right(double speed, double inches, int timeout){
-        
-        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        int target;
-        
-        if(opModeIsActive()){
-            
-            target = (int)(inches*COUNTS_PER_INCH*globalCorection);
-            
-            leftFrontDrive.setTargetPosition(target);
-            rightFrontDrive.setTargetPosition(-target);
-            leftBackDrive.setTargetPosition(-target);
-            rightBackDrive.setTargetPosition(target);
-            
-            leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            runtime.reset();
-            leftFrontDrive.setPower(speed);
-            rightFrontDrive.setPower(speed);
-            leftBackDrive.setPower(speed);
-            rightBackDrive.setPower(speed);
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftFrontDrive.isBusy() && rightFrontDrive.isBusy() && leftBackDrive.isBusy() && rightBackDrive.isBusy())) {
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d", target);
-                telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
-                telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            //Stop Drive Motors
-            leftFrontDrive.setPower(0);
-            rightFrontDrive.setPower(0);
-            leftBackDrive.setPower(0);
-            rightBackDrive.setPower(0);
-            
-            sleep(globalSleep);
-            
-        }
-        
+
+    public void right(double speed, double inches, int timeout) {
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        // For right strafe the front left and back right go forward; the other two go in reverse.
+        runDrive(target, -target, -target, target, speed, timeout);
     }
-    
-    public void left(double speed, double inches, int timeout){
-        
-        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        int target;
-        
-        if(opModeIsActive()){
-            
-            target = (int)(inches*COUNTS_PER_INCH*globalCorection);
-            
-            leftFrontDrive.setTargetPosition(-target);
-            rightFrontDrive.setTargetPosition(target);
-            leftBackDrive.setTargetPosition(target);
-            rightBackDrive.setTargetPosition(-target);
-            
-            leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            runtime.reset();
-            leftFrontDrive.setPower(speed);
-            rightFrontDrive.setPower(speed);
-            leftBackDrive.setPower(speed);
-            rightBackDrive.setPower(speed);
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftFrontDrive.isBusy() && rightFrontDrive.isBusy() && leftBackDrive.isBusy() && rightBackDrive.isBusy())) {
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d", target);
-                telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
-                telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            //Stop Drive Motors
-            leftFrontDrive.setPower(0);
-            rightFrontDrive.setPower(0);
-            leftBackDrive.setPower(0);
-            rightBackDrive.setPower(0);
-            
-            sleep(globalSleep);
-            
-        }
-        
+
+    public void left(double speed, double inches, int timeout) {
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        runDrive(-target, target, target, -target, speed, timeout);
     }
-    
-    public void turnRight(double speed, double inches, int timeout){
-        
-        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        int target;
-        
-        if(opModeIsActive()){
-            
-            target = (int)(inches*COUNTS_PER_INCH*globalCorection);
-            
-            leftFrontDrive.setTargetPosition(target);
-            rightFrontDrive.setTargetPosition(-target);
-            leftBackDrive.setTargetPosition(target);
-            rightBackDrive.setTargetPosition(-target);
-            
-            leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            runtime.reset();
-            leftFrontDrive.setPower(speed);
-            rightFrontDrive.setPower(speed);
-            leftBackDrive.setPower(speed);
-            rightBackDrive.setPower(speed);
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftFrontDrive.isBusy() && rightFrontDrive.isBusy() && leftBackDrive.isBusy() && rightBackDrive.isBusy())) {
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d", target);
-                telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
-                telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            //Stop Drive Motors
-            leftFrontDrive.setPower(0);
-            rightFrontDrive.setPower(0);
-            leftBackDrive.setPower(0);
-            rightBackDrive.setPower(0);
-            
-            sleep(globalSleep);
-            
-        }
-        
+
+    public void turnRight(double speed, double inches, int timeout) {
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        // For turning right, the left motors move forward and right motors move backward.
+        runDrive(target, -target, target, -target, speed, timeout);
     }
-    
-    public void turnLeft(double speed, double inches, int timeout){
-        
-        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        int target;
-        
-        if(opModeIsActive()){
-            
-            target = (int)(inches*COUNTS_PER_INCH*globalCorection);
-            
-            leftFrontDrive.setTargetPosition(-target);
-            rightFrontDrive.setTargetPosition(target);
-            leftBackDrive.setTargetPosition(-target);
-            rightBackDrive.setTargetPosition(target);
-            
-            leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            runtime.reset();
-            leftFrontDrive.setPower(speed);
-            rightFrontDrive.setPower(speed);
-            leftBackDrive.setPower(speed);
-            rightBackDrive.setPower(speed);
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftFrontDrive.isBusy() && rightFrontDrive.isBusy() && leftBackDrive.isBusy() && rightBackDrive.isBusy())) {
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d", target);
-                telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
-                telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            //Stop Drive Motors
-            leftFrontDrive.setPower(0);
-            rightFrontDrive.setPower(0);
-            leftBackDrive.setPower(0);
-            rightBackDrive.setPower(0);
-            
-            sleep(globalSleep);
-            
-        }
-        
+
+    public void turnLeft(double speed, double inches, int timeout) {
+        int target = (int)(inches * COUNTS_PER_INCH * globalCorection);
+        runDrive(-target, target, -target, target, speed, timeout);
     }
-    
+
+
     public void liftUp(double speed, int ticks, int timeout){
         
         leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -899,19 +692,17 @@ public class LeftFieldCamera extends LinearOpMode {
     
     /*Pincher Functions*/
     //Opens the pincher
-    private void openPinch(){
-        pinchPos = 0.20;
-        pinch2Pos = 0.35;
-        sendPower();
+    private void openPinch() {
+        rightPinch.setPosition(0.35);
+        leftPinch.setPosition(0.20);
     }
-    
-    //Closes the pincher
-    private void closePinch(){
-        pinchPos = 0;
-        pinch2Pos = 0;
-        sendPower();
+
+    private void closePinch() {
+        rightPinch.setPosition(0.0);
+        leftPinch.setPosition(0.0);
     }
-    
+
+
     private void moveArm(double power, double time){
         frontArm.setPower(power);
         sendPower();
