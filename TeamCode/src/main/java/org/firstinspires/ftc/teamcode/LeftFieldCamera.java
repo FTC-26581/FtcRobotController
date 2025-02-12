@@ -153,7 +153,7 @@ public class LeftFieldCamera extends LinearOpMode {
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
     
-        // Initialize your custom pipeline. (Make sure SampleDetectionPipeline is available.)
+        // Initializes our custom pipeline. (Make sure SampleDetectionPipeline is available.)
         pipeline = new SampleDetectionPipeline();
         webcam.setPipeline(pipeline);
     
@@ -180,7 +180,7 @@ public class LeftFieldCamera extends LinearOpMode {
         //Close Pincher to Ready Robot
         closePinch();
         
-            // Wait for the game to start (driver presses PLAY)
+        // Wait for the game to start (driver presses PLAY)
         waitForStart();
     
         // Optional: Give the pipeline a moment to update
@@ -190,9 +190,9 @@ public class LeftFieldCamera extends LinearOpMode {
         telemetry.addData("Vision", "Aligning with sample...");
         telemetry.update();
     
-        // Loop until the sample is centered within a tolerance (here, 10 pixels)
+        // Loop until the sample is centered within a tolerance(10 pixels)
         while (opModeIsActive()) {
-            Point sampleCenter = pipeline.getSampleCenter();  // Assumes your pipeline provides this
+            Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
             if (sampleCenter != null) {
                 double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
                 double errorY = sampleCenter.y - 120;  // 120 = center of a 240-pixel tall image
@@ -202,7 +202,7 @@ public class LeftFieldCamera extends LinearOpMode {
                 telemetry.update();
                 
                 // Check if sample is aligned (within 10 pixels)
-                if (Math.abs(errorX) < 10) {
+                if (Math.abs(errorX) < 10 && Math.abs(errorY) < 10) {
                     telemetry.addData("Status", "Aligned!");
                     telemetry.update();
                     break;  // Exit the loop when aligned
