@@ -27,24 +27,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode;//Package Declaration
 
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.robotcore.util.Range;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;//Include the Autonomous Library
+import com.qualcomm.robotcore.hardware.Servo;//Include the Servo Library
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;//Include the LinearOpMode Library
+import com.qualcomm.robotcore.hardware.DcMotor;//Include the DcMotor Library
+import com.qualcomm.robotcore.util.ElapsedTime;//Include the Elapsed Time Library
+import com.qualcomm.hardware.bosch.BNO055IMU;//Include the IMU Library
+import com.qualcomm.robotcore.util.Range;//Include the Range Library
 
+//Import the necessary classes for the IMU
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 
 
-@Autonomous(name="LeftFieldFeedback", group="Robot")
+@Autonomous(name="LeftFieldFeedback", group="Robot")//Register the class as an Autonomous program and set the name and group
 
+//Class Declaration
 public class LeftFieldFeedback extends LinearOpMode {
 
     //PIDController pidController = new PIDController(0.1, 0.1, 0.05);
@@ -53,20 +55,27 @@ public class LeftFieldFeedback extends LinearOpMode {
     private BNO055IMU imu;
 
 
-    //Declaring DcMotor Objects
+    //Declaring DcMotor Objects//
+
+    //Declare Drive Motors
     private DcMotor leftFrontDrive = null;
     private DcMotor leftBackDrive = null;
     private DcMotor rightFrontDrive = null;
     private DcMotor rightBackDrive = null;
+
+    //Declare Lift Motors
     private DcMotor rightHexLift = null;
     private DcMotor leftHexLift = null;
-    private DcMotor frontArm = null;
-    
+
+    private DcMotor frontArm = null;//Declare Arm Motor
+
+    //Declaring and setting variables for encoder counts math
     double ticksPR = 537.6;
     double WHEEL_DIAMETER_MILLIMETERS = 96.8;
     double WHEEL_DIAMETER_INCHES = WHEEL_DIAMETER_MILLIMETERS*0.039;
     double COUNTS_PER_INCH = ticksPR / (WHEEL_DIAMETER_INCHES * 3.1415);//11.3477 pules per inch with 96mm
-    
+
+    //Declare Global Speed Variables
     double driveSpeed = 0.6;
     
     //Pincher servos
@@ -92,11 +101,12 @@ public class LeftFieldFeedback extends LinearOpMode {
     double yaw;
     
     //Lift power
-    double liftPower = 0.0;
+    double liftPower = 0.0;//Set Lift Power to 0 to start
     
-    int globalSleep = 250;
+    int globalSleep = 250;//Set Global Sleep Time to 250ms
     
-    double globalCorrection = 1.084;
+    double globalCorrection = 1.084;//Set Global Correction to 1.084.
+    //globalCorrection is used to correct the distance the robot moves. In this case, the robot moves 8.4% more than it should
 
     //Main OpMode Code \/
     @Override
