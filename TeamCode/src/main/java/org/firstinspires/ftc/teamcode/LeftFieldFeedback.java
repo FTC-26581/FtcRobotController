@@ -34,11 +34,24 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 
 
 @Autonomous(name="LeftFieldFeedback", group="Robot")
 
 public class LeftFieldFeedback extends LinearOpMode {
+
+    //PIDController pidController = new PIDController(0.1, 0.1, 0.05);
+
+    //Declare IMU
+    private BNO055IMU imu;
+
 
     //Declaring DcMotor Objects
     private DcMotor leftFrontDrive = null;
@@ -88,6 +101,27 @@ public class LeftFieldFeedback extends LinearOpMode {
     //Main OpMode Code \/
     @Override
     public void runOpMode() {
+
+        // Setup IMU parameters
+        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
+        parameters.angleUnit           = BNO055IMU.AngleUnit.DEGREES; // use degrees for easier math
+        parameters.accelUnit           = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
+        parameters.calibrationDataFile = "BNO055IMUCalibration.json"; // if available
+        parameters.loggingEnabled      = true;
+        parameters.loggingTag          = "IMU";
+
+        // Initialize the IMU (the name "imu" must match your configuration)
+        imu = hardwareMap.get(BNO055IMU.class, "imu");
+        imu.initialize(parameters);
+
+        // Wait for the IMU to calibrate
+        while (!isStopRequested() && !imu.isGyroCalibrated()) {
+            telemetry.addData("IMU Status", "Calibrating...");
+            telemetry.update();
+            sleep(50);
+        }
+        telemetry.addData("IMU Status", "Calibrated");
+        telemetry.update();
 
         // Initialize the drive system variables.
         
@@ -531,6 +565,44 @@ public class LeftFieldFeedback extends LinearOpMode {
             
         }
         
+    }
+
+    //Gyro Turn Function: Turns the robot using the gyro sensor.
+    public void turnToAngle(double speed, double targetAngle) {
+        double currentAngle = getGyroAngle();
+        while (opModeIsActive() && Math.abs(targetAngle - currentAngle) > 1) {
+            double error = targetAngle - currentAngle;
+
+            // Normalize error to be within -180 to 180 degrees
+            while (error > 180) error -= 360;
+            while (error < -180) error += 360;
+
+            // Check if within an acceptable error margin
+            if (Math.abs(error) < 1) break;
+
+            double turnPower = Range.clip(error * 0.01, -speed, speed); // Proportional control
+
+            leftFrontDrive.setPower(turnPower);
+            rightFrontDrive.setPower(-turnPower);
+            leftBackDrive.setPower(turnPower);
+            rightBackDrive.setPower(-turnPower);
+            currentAngle = getGyroAngle();
+
+            telemetry.addData("Error", error);
+            telemetry.update();
+        }
+        stopDrive();
+    }
+
+    private double getGyroAngle() {
+        // Read the heading (rotation about the Z-axis)
+        Orientation angles = imu.getAngularOrientation(
+                AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        double heading = angles.firstAngle;
+
+        telemetry.addData("Heading", heading);
+        telemetry.update();
+        return heading;
     }
 
     
