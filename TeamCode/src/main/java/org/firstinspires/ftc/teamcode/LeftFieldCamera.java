@@ -186,50 +186,7 @@ public class LeftFieldCamera extends LinearOpMode {
         // Optional: Give the pipeline a moment to update
         sleep(1000);
     
-        // Vision-based alignment: adjust lateral position until the sample is centered
-        telemetry.addData("Vision", "Aligning with sample...");
-        telemetry.update();
-    
-        // Loop until the sample is centered within a tolerance(10 pixels)
-        while (opModeIsActive()) {
-            Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
-            if (sampleCenter != null) {
-                double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
-                double errorY = sampleCenter.y - 120;  // 120 = center of a 240-pixel tall image
-                telemetry.addData("Sample Center", sampleCenter.toString());
-                telemetry.addData("Error X", errorX);
-                telemetry.addData("Error Y", errorY);
-                telemetry.update();
-                
-                // Check if sample is aligned (within 10 pixels)
-                if (Math.abs(errorX) < 10 && Math.abs(errorY) < 10) {
-                    telemetry.addData("Status", "Aligned!");
-                    telemetry.update();
-                    break;  // Exit the loop when aligned
-                }
-                
-                // Adjust X position: if errorX is positive, sample is to the right, so move left; if negative, move right.
-                if (errorX > 0) {
-                    // Move left slightly. Adjust speed, distance, and timeout.
-                    left(0.3, 0.5, 1);
-                } else {
-                    // Move right slightly.
-                    right(0.3, 0.5, 1);
-                }
-                //Adjust Y Posistion:
-                if (errorY > 0) {
-                    //Move forward slightly
-                    forward(0.3, 0.5, 1);
-                } else {
-                    //Move backward slightly
-                    backward(0.3, 0.5, 1);  
-            } else {
-                //If there is no sample detected then
-                telemetry.addData("Vision", "Sample not detected");
-                telemetry.update();
-            }
-            sleep(250);  // Short delay between adjustments
-        }
+        alignSample();
 
         /*
         //Making sure pincher is closed
@@ -291,7 +248,55 @@ public class LeftFieldCamera extends LinearOpMode {
     //circumference = 11.87 inches 
 
     /*Feedback Control Functions*/
-    
+    public void alignSample() {
+        // Vision-based alignment: adjust lateral position until the sample is centered
+        telemetry.addData("Vision", "Aligning with sample...");
+        telemetry.update();
+
+        // Loop until the sample is centered within a tolerance(10 pixels)
+        while (opModeIsActive()) {
+            Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
+            if (sampleCenter != null) {
+                double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
+                double errorY = sampleCenter.y - 120;  // 120 = center of a 240-pixel tall image
+                telemetry.addData("Sample Center", sampleCenter.toString());
+                telemetry.addData("Error X", errorX);
+                telemetry.addData("Error Y", errorY);
+                telemetry.update();
+
+                // Check if sample is aligned (within 10 pixels)
+                if (Math.abs(errorX) < 10 && Math.abs(errorY) < 10) {
+                    telemetry.addData("Status", "Aligned!");
+                    telemetry.update();
+                    break;  // Exit the loop when aligned
+                }
+
+                // Adjust X position: if errorX is positive, sample is to the right, so move left; if negative, move right.
+                if (errorX > 0) {
+                    // Move left slightly. Adjust speed, distance, and timeout.
+                    left(0.3, 0.5, 1);
+                } else {
+                    // Move right slightly.
+                    right(0.3, 0.5, 1);
+                }
+                //Adjust Y Posistion:
+                if (errorY > 0) {
+                    //Move forward slightly
+                    forward(0.3, 0.5, 1);
+                } else {
+                    //Move backward slightly
+                    backward(0.3, 0.5, 1);
+                }
+            } else {
+                //If there is no sample detected then
+                telemetry.addData("Vision", "Sample not detected");
+                telemetry.update();
+                sleep(250);  // Short delay between adjustments
+            }
+
+        }
+    }
+
     public void forwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, int timeout){
         
         //Stop and Reset Encoders
@@ -905,43 +910,6 @@ public class LeftFieldCamera extends LinearOpMode {
         pinchPos = 0;
         pinch2Pos = 0;
         sendPower();
-    }
-    
-    
-    /*Timed Drive Functions*/
-    private void driveAxial(double power, double time){
-        axial = power;
-        sendPower();
-        waitWhile(time);
-        stopDrive();
-        
-    }
-    
-    private void driveLateral(double power, double time){
-        lateral = power;
-        sendPower();
-        waitWhile(time);
-        stopDrive();
-        
-    }
-    
-    private void lift(double power, double time){
-        liftPower = power;
-        sendPower();
-        waitWhile(time);
-        liftPower = 0;
-        sendPower();
-        
-    }
-    
-    private void correctYaw(double power, double time){
-        yaw = power;
-        sendPower();
-        waitWhile(time);
-        yaw = 0.0;
-        sendPower();
-        stopDrive();
-        
     }
     
     private void moveArm(double power, double time){
