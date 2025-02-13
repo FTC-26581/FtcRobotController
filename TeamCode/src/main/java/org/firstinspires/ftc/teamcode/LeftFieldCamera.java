@@ -204,8 +204,9 @@ public class LeftFieldCamera extends LinearOpMode {
         //right(driveSpeed, 15, 3);//Move to face the basket
         rightForward(driveSpeed, 28, 2);
         turnLeft(driveSpeed, 8.5, 2);
-        forward(driveSpeed, 10, 2);//move to basket
-        liftUp(1.0, 730, 4);//Lift arm up to be ready to drop sample in higher basket
+        //forward(driveSpeed, 10, 2);//move to basket
+        //liftUp(1.0, 730, 4);//Lift arm up to be ready to drop sample in higher basket
+        forwardWithLift(driveSpeed, 10, 3, 730, 0, 6);
         leftHexLift.setPower(0.3);
         rightHexLift.setPower(0.3);
         forward(driveSpeed, 3, 1);
@@ -216,16 +217,16 @@ public class LeftFieldCamera extends LinearOpMode {
 
         //Step 2: Move into position to pick up sample
         backward(driveSpeed, 9, 1);//move away from basket
-        liftDown(1.0, 600, 2);//bring lift down
+        liftDown(1.0, 550, 2);//bring lift down
         turnRight(0.65, 30, 2);//Turn to face sample
         right(driveSpeed, 3, 1);//Small adjustment to face sample
         moveArm(0.3, 0.6);//Move arm out to pick up sample
-        forward(driveSpeed, 6.0, 1);//Move to sample
+        forward(driveSpeed, 7.0, 1);//Move to sample
         openPinch();
         alignSample(2, 35, 0.5, 1);//Align with sample using camera
         //forward(driveSpeed, 0.5, 1);
         openPinch();
-        liftDown(1.0, 100, 3);//Bring lift down to pick up sample
+        liftDown(1.0, 150, 3);//Bring lift down to pick up sample
 
         //Step 3: Pick up sample and move to basket
         sleep(250);//wait for robot to stop moving
@@ -274,7 +275,7 @@ public class LeftFieldCamera extends LinearOpMode {
             Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
             if (sampleCenter != null) {
                 double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
-                double errorY = sampleCenter.y - 80;  // 120 = center of a 240-pixel tall image
+                double errorY = sampleCenter.y - 100;  // 120 = center of a 240-pixel tall image
                 telemetry.addData("Sample Center", sampleCenter.toString());
                 telemetry.addData("Error X", errorX);
                 telemetry.addData("Error Y", errorY);
