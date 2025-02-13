@@ -59,7 +59,7 @@ public class LeftFieldCamera extends LinearOpMode {
     double WHEEL_DIAMETER_INCHES = WHEEL_DIAMETER_MILLIMETERS*0.039;
     double COUNTS_PER_INCH = ticksPR / (WHEEL_DIAMETER_INCHES * 3.1415);//11.3477 pules per inch with 96mm
 
-    double driveSpeed = 0.85;
+    double driveSpeed = 0.5;
 
     //Pincher servos
     Servo rightPinch;
@@ -86,7 +86,7 @@ public class LeftFieldCamera extends LinearOpMode {
     //Lift power
     double liftPower;
 
-    int globalSleep = 100;
+    int globalSleep = 5;
 
     double globalCorrection = 1.084;
 
@@ -199,30 +199,33 @@ public class LeftFieldCamera extends LinearOpMode {
         //Following is Main the Autonomous Steps:
 
         //Step 1: Lift the arm up and move to basket
-        right(driveSpeed, 8, 2);//Move to the right to be away from the wall
-        turnLeft(driveSpeed, 8.5, 2);//Turn to face the basket
-        right(driveSpeed, 15, 3);//Move to face the basket
-        forward(driveSpeed, 18, 5);//move to basket
-        liftUp(1.0, 750, 4);//Lift arm up to be ready to drop sample in higher basket
+        //right(driveSpeed, 8, 2);//Move to the right to be away from the wall
+        //turnLeft(driveSpeed, 8.5, 2);//Turn to face the basket
+        //right(driveSpeed, 15, 3);//Move to face the basket
+        rightForward(driveSpeed, 28, 2);
+        turnLeft(driveSpeed, 8.5, 2);
+        forward(driveSpeed, 10, 2);//move to basket
+        liftUp(1.0, 730, 4);//Lift arm up to be ready to drop sample in higher basket
         leftHexLift.setPower(0.3);
         rightHexLift.setPower(0.3);
         forward(driveSpeed, 3, 1);
-        moveArm(0.2, 0.3);//Move arm out to drop sample
+        moveArm(0.3, 0.3);//Move arm out to drop sample
         sleep(100);//wait for arm to move
         openPinch();//Open pinch to drop sample
-        frontArm.setPower(-0.5);//Set arm power to move back and keep it there
+        frontArm.setPower(-0.6);//Set arm power to move back and keep it there
 
         //Step 2: Move into position to pick up sample
-        backward(driveSpeed, 9, 3);//move away from basket
-        liftDown(1.0, 500, 3);//bring lift down
-        turnRight(driveSpeed, 29.8, 3);//Turn to face sample
-        left(driveSpeed, 0.3, 1);//Small adjustment to face sample
+        backward(driveSpeed, 9, 1);//move away from basket
+        liftDown(1.0, 600, 2);//bring lift down
+        turnRight(0.65, 30, 2);//Turn to face sample
+        right(driveSpeed, 3, 1);//Small adjustment to face sample
         moveArm(0.3, 0.6);//Move arm out to pick up sample
-        forward(driveSpeed, 8.2, 3);//Move to sample
+        forward(driveSpeed, 6.0, 1);//Move to sample
         openPinch();
-        alignSample(5.0, 15, 0.75, 0.5);//Align with sample using camera
+        alignSample(2, 35, 0.5, 1);//Align with sample using camera
+        //forward(driveSpeed, 0.5, 1);
         openPinch();
-        liftDown(1.0, 150, 3);//Bring lift down to pick up sample
+        liftDown(1.0, 100, 3);//Bring lift down to pick up sample
 
         //Step 3: Pick up sample and move to basket
         sleep(250);//wait for robot to stop moving
@@ -232,7 +235,7 @@ public class LeftFieldCamera extends LinearOpMode {
         frontArm.setPower(-0.5);//Set arm power to move back and keep it there
         turnLeft(driveSpeed, 33, 3);//turn to face basket
         left(driveSpeed, 3, 2);//line up with basket
-        liftUp(1.0, 650, 4);//Lift arm up to drop sample
+        liftUp(1.0, 700, 4);//Lift arm up to drop sample
         forward(driveSpeed, 14, 3);//Move to basket
 
         //Step 4: Drop sample and move to next sample
@@ -271,7 +274,7 @@ public class LeftFieldCamera extends LinearOpMode {
             Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
             if (sampleCenter != null) {
                 double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
-                double errorY = sampleCenter.y - 120;  // 120 = center of a 240-pixel tall image
+                double errorY = sampleCenter.y - 80;  // 120 = center of a 240-pixel tall image
                 telemetry.addData("Sample Center", sampleCenter.toString());
                 telemetry.addData("Error X", errorX);
                 telemetry.addData("Error Y", errorY);
@@ -357,6 +360,12 @@ public class LeftFieldCamera extends LinearOpMode {
         }
         stopDrive();  // Stop all motors.
         sleep(globalSleep);
+    }
+
+    public void rightForward(double speed, double inches, int timeout) {
+
+        int target = (int)(inches * COUNTS_PER_INCH * (globalCorrection));
+        runDrive(target, 0, 0, target, speed, timeout);
     }
 
     public void forwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, int timeout){
