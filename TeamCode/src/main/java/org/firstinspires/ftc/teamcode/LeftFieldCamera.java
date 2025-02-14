@@ -59,7 +59,7 @@ public class LeftFieldCamera extends LinearOpMode {
     double WHEEL_DIAMETER_INCHES = WHEEL_DIAMETER_MILLIMETERS*0.039;
     double COUNTS_PER_INCH = ticksPR / (WHEEL_DIAMETER_INCHES * 3.1415);//11.3477 pules per inch with 96mm
 
-    double driveSpeed = 0.5;
+    double driveSpeed = 0.6;
 
     //Pincher servos
     Servo rightPinch;
@@ -206,9 +206,9 @@ public class LeftFieldCamera extends LinearOpMode {
         turnLeft(driveSpeed, 8.5, 2);
         //forward(driveSpeed, 10, 2);//move to basket
         //liftUp(1.0, 730, 4);//Lift arm up to be ready to drop sample in higher basket
-        forwardWithLift(driveSpeed, 10, 3, 730, 0, 6);
-        leftHexLift.setPower(0.3);
-        rightHexLift.setPower(0.3);
+        forwardWithLift(0.3, 12, 2, 720, 0, 3);
+        leftHexLift.setPower(-0.3);
+        rightHexLift.setPower(-0.3);
         forward(driveSpeed, 3, 1);
         moveArm(0.3, 0.3);//Move arm out to drop sample
         sleep(100);//wait for arm to move
@@ -221,9 +221,9 @@ public class LeftFieldCamera extends LinearOpMode {
         turnRight(0.65, 30, 2);//Turn to face sample
         right(driveSpeed, 3, 1);//Small adjustment to face sample
         moveArm(0.3, 0.6);//Move arm out to pick up sample
-        forward(driveSpeed, 7.0, 1);//Move to sample
+        forward(driveSpeed, 7.5, 1);//Move to sample
         openPinch();
-        alignSample(2, 35, 0.5, 1);//Align with sample using camera
+        alignSample(2, 35, 0.5, 1, 0.5);//Align with sample using camera
         //forward(driveSpeed, 0.5, 1);
         openPinch();
         liftDown(1.0, 150, 3);//Bring lift down to pick up sample
@@ -234,10 +234,11 @@ public class LeftFieldCamera extends LinearOpMode {
         sleep(250);//wait for pinch to close
         moveArm(-1.0, 1.0);//Move arm back in
         frontArm.setPower(-0.5);//Set arm power to move back and keep it there
-        turnLeft(driveSpeed, 33, 3);//turn to face basket
+        turnLeft(driveSpeed, 32, 2);//turn to face basket
         left(driveSpeed, 3, 2);//line up with basket
-        liftUp(1.0, 700, 4);//Lift arm up to drop sample
-        forward(driveSpeed, 14, 3);//Move to basket
+        //liftUp(1.0, 710, 3);//Lift arm up to drop sample
+        //forward(driveSpeed, 14, 3);//Move to basket
+        forwardWithLift(0.2, 16, 1, 720, 0, 4);
 
         //Step 4: Drop sample and move to next sample
         sleep(150);//wait for robot to stop moving
@@ -263,7 +264,7 @@ public class LeftFieldCamera extends LinearOpMode {
     //circumference = 11.87 inches
 
     /*Feedback Control Functions*/
-    public void alignSample(double timeout, int margin, double speed, double increment) {
+    public void alignSample(double timeout, int margin, double speed, double increment, double inctimeout) {
         // Vision-based alignment: adjust lateral position until the sample is centered
         telemetry.addData("Vision", "Aligning with sample...");
         telemetry.update();
@@ -291,18 +292,18 @@ public class LeftFieldCamera extends LinearOpMode {
                 // Adjust X position: if errorX is positive, sample is to the right, so move left; if negative, move right.
                 if (errorX > 0) {
                     // Move left slightly. Adjust speed, distance, and timeout.
-                    left(speed, increment, 1);
+                    left(speed, increment, inctimeout);
                 } else {
                     // Move right slightly.
-                    right(speed, increment, 1);
+                    right(speed, increment, inctimeout);
                 }
                 //Adjust Y Position:
                 if (errorY > 0) {
                     //Move forward slightly
-                    forward(speed, increment, 1);
+                    forward(speed, increment, inctimeout);
                 } else {
                     //Move backward slightly
-                    backward(speed, increment, 1);
+                    backward(speed, increment, inctimeout);
                 }
             } else {
                 //If there is no sample detected then
@@ -369,7 +370,7 @@ public class LeftFieldCamera extends LinearOpMode {
         runDrive(target, 0, 0, target, speed, timeout);
     }
 
-    public void forwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, int timeout){
+    public void forwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, double timeout){
 
         //Stop and Reset Encoders
         leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -395,8 +396,8 @@ public class LeftFieldCamera extends LinearOpMode {
             leftBackDrive.setTargetPosition(target);
             rightBackDrive.setTargetPosition(target);
 
-            leftHexLift.setTargetPosition(liftTarget);
-            rightHexLift.setTargetPosition(liftTarget);
+            leftHexLift.setTargetPosition(-liftTarget);
+            rightHexLift.setTargetPosition(-liftTarget);
 
             //Set RunMode for Encoders
             leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -411,8 +412,9 @@ public class LeftFieldCamera extends LinearOpMode {
             runtime.reset();
 
             while (opModeIsActive() && runtime.seconds() < timeout &&
-                    ((leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || leftBackDrive.isBusy() || rightBackDrive.isBusy()) ||
-                            (leftHexLift.isBusy() || rightHexLift.isBusy()))) {
+                    (leftFrontDrive.isBusy() || rightFrontDrive.isBusy() ||
+                            leftBackDrive.isBusy() || rightBackDrive.isBusy() ||
+                            leftHexLift.isBusy() || rightHexLift.isBusy())) {
 
                 if(runtime.seconds() >= driveDelay){
                     leftFrontDrive.setPower(speed);
@@ -430,7 +432,7 @@ public class LeftFieldCamera extends LinearOpMode {
                 telemetry.addData("Path1",  "Running to %7d", target);
                 telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
                 telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.addData("Lift",  "Running to %7d", target);
+                telemetry.addData("Lift",  "Running to %7d", liftTarget);
                 telemetry.addData("Lift",  "Lift-at %7d :%7d", leftHexLift.getCurrentPosition(), rightHexLift.getCurrentPosition());
                 telemetry.update();
             }
@@ -531,24 +533,24 @@ public class LeftFieldCamera extends LinearOpMode {
 
     }
 
-    public void forward(double speed, double inches, int timeout) {
+    public void forward(double speed, double inches, double timeout) {
         // For forward movement, all motors move the same direction.
         int target = (int)(inches * COUNTS_PER_INCH * (globalCorrection - 0.05));
         runDrive(target, target, target, target, speed, timeout);
     }
 
-    public void backward(double speed, double inches, int timeout) {
+    public void backward(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, -target, -target, -target, speed, timeout);
     }
 
-    public void right(double speed, double inches, int timeout) {
+    public void right(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         // For right strafe the front left and back right go forward; the other two go in reverse.
         runDrive(target, -target, -target, target, speed, timeout);
     }
 
-    public void left(double speed, double inches, int timeout) {
+    public void left(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, target, target, -target, speed, timeout);
     }
