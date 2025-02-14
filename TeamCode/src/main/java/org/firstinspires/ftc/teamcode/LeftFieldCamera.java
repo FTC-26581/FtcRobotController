@@ -202,52 +202,52 @@ public class LeftFieldCamera extends LinearOpMode {
         //right(driveSpeed, 8, 2);//Move to the right to be away from the wall
         //turnLeft(driveSpeed, 8.5, 2);//Turn to face the basket
         //right(driveSpeed, 15, 3);//Move to face the basket
-        rightForward(driveSpeed, 30, 1.5);
-        turnLeft(driveSpeed, 8.5, 2);
+        rightForward(driveSpeed, 35, 2.0);
+        turnLeft(driveSpeed, 8.5, 1.9);
         //forward(driveSpeed, 10, 2);//move to basket
         //liftUp(1.0, 730, 4);//Lift arm up to be ready to drop sample in higher basket
-        forwardWithLift(0.2, 12, 1, 720, 0, 2.5);
+        forwardWithLift(0.2, 12, 1.5, 720, 0, 3.0);
         leftHexLift.setPower(-0.3);
         rightHexLift.setPower(-0.3);
         forward(driveSpeed, 3, 1);
-        moveArm(0.2, 0.2);//Move arm out to drop sample
-        sleep(100);//wait for arm to move
+        moveArm(0.3, 0.3);//Move arm out to drop sample
+        sleep(50);//wait for arm to move
         openPinch();//Open pinch to drop sample
         frontArm.setPower(-0.6);//Set arm power to move back and keep it there
 
         //Step 2: Move into position to pick up sample
-        backward(driveSpeed, 9, 1);//move away from basket
+        backward(driveSpeed, 8, 1);//move away from basket
         liftDown(1.0, 520, 2);//bring lift down
         turnRight(0.65, 30, 2);//Turn to face sample
-        right(driveSpeed, 3.6, 1);//Small adjustment to face sample
+        right(driveSpeed, 3.7, 1);//Small adjustment to face sample
         moveArm(0.3, 0.6);//Move arm out to pick up sample
-        forward(driveSpeed, 6.8, 1);//Move to sample
+        forward(driveSpeed, 6.7, 1);//Move to sample
         openPinch();
-        alignSample(2, 35, 0.5, 0.5, 0.8);//Align with sample using camera
+        alignSample(2, 45, 0.5, 0.5, 0.8);//Align with sample using camera
         openPinch();
-        liftDown(1.0, 150, 3);//Bring lift down to pick up sample
+        liftDown(1.0, 115, 3);//Bring lift down to pick up sample
 
         //Step 3: Pick up sample and move to basket
         sleep(100);//wait for robot to stop moving
         closePinch();//close pinch to pick up sample
-        sleep(100);//wait for pinch to close
+        sleep(250);//wait for pinch to close
         moveArm(-1.0, 1.0);//Move arm back in
         frontArm.setPower(-0.5);//Set arm power to move back and keep it there
-        turnLeft(driveSpeed, 32, 2);//turn to face basket
+        turnLeft(0.75, 32, 1.5);//turn to face basket
         left(driveSpeed, 3, 1);//line up with basket
         //liftUp(1.0, 710, 3);//Lift arm up to drop sample
         //forward(driveSpeed, 14, 3);//Move to basket
-        forwardWithLift(0.2, 15, 0, 720, 0, 3);
+        forwardWithLift(0.2, 15, 0, 730, 0, 2.8);
 
         //Step 4: Drop sample and move to next sample
         sleep(100);//wait for robot to stop moving
-        moveArm(0.2, 0.2);//Move arm out to drop sample
-        sleep(100);//wait for arm to move
+        moveArm(0.3, 0.3);//Move arm out to drop sample
+        sleep(50);//wait for arm to move
         openPinch();//Open pinch to drop sample
         frontArm.setPower(-0.5);//Set arm power to move back and keep it there
         //backward(driveSpeed, 5, 1);//Move back from basket
         //liftDown(1.0, 500, 4);//Bring lift down
-        backwardWithLift(0.3, 5, 0, -700, 0, 3);
+        backwardWithLift(0.3, 5, 0, -720, 0, 3);
         turnRight(0.75, 29.5, 3);//Turn to face next sample
 
         //Stop Motors
@@ -273,6 +273,7 @@ public class LeftFieldCamera extends LinearOpMode {
 
         // Loop until the sample is centered within a tolerance(10 pixels)
         while (opModeIsActive()&& runtime.seconds() < timeout) {
+            openPinch();
             Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
             if (sampleCenter != null) {
                 double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
@@ -556,19 +557,19 @@ public class LeftFieldCamera extends LinearOpMode {
         runDrive(-target, target, target, -target, speed, timeout);
     }
 
-    public void turnRight(double speed, double inches, int timeout) {
+    public void turnRight(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         // For turning right, the left motors move forward and right motors move backward.
         runDrive(target, -target, target, -target, speed, timeout);
     }
 
-    public void turnLeft(double speed, double inches, int timeout) {
+    public void turnLeft(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, target, -target, target, speed, timeout);
     }
 
 
-    public void liftDown(double speed, int ticks, int timeout){
+    public void liftDown(double speed, int ticks, double timeout){
 
         leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -606,7 +607,7 @@ public class LeftFieldCamera extends LinearOpMode {
 
     }
 
-    public void liftUp(double speed, int ticks, int timeout){
+    public void liftUp(double speed, int ticks, double timeout){
 
         leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
