@@ -81,7 +81,7 @@ public class RightFieldFeedbackV2 extends LinearOpMode {
     //Lift power
     double liftPower = 0.0;
 
-    int globalSleep = 250;
+    int globalSleep = 100;
 
     double globalCorrection = 1.084;
 
@@ -158,21 +158,22 @@ public class RightFieldFeedbackV2 extends LinearOpMode {
 
         //Following is the Autonomous Steps:
 
-        liftUp(0.9, 400, 5);
-        forward(driveSpeed, 27, 5);
-        //moveArm(0.1, 0.1);
-        liftUp(0.8, 400, 4);
+        liftUp(1, 275, 3);
+        forward(driveSpeed, 28, 3);
+        moveArm(0.4, 0.1);
+        liftUp(1, 150, 3);
         openPinch();
         moveArm(-0.8, 0.3);
-        backward(driveSpeed, 3, 5);
-        liftDown(0.8, 790, 5);
-        right(driveSpeed, 28, 5);
-        forward(driveSpeed, 24, 5);
-        right(driveSpeed, 13, 5);
-        backward(driveSpeed, 42, 5);
-        forward(driveSpeed, 42, 5);
-        right(driveSpeed, 12, 5);
-        backward(driveSpeed, 42, 5);
+        frontArm.setPower(-0.5);
+        backward(driveSpeed, 3, 2);
+        liftDown(0.8, 390, 2);
+        right(driveSpeed, 28, 2);
+        forward(driveSpeed, 24, 2);
+        right(driveSpeed, 13, 2);
+        backward(driveSpeed, 42, 2);
+        forward(driveSpeed, 42, 2);
+        right(driveSpeed, 12, 2);
+        backward(driveSpeed, 38, 3);
 
 
         //Stop Motors
@@ -426,7 +427,7 @@ public class RightFieldFeedbackV2 extends LinearOpMode {
         runDrive(-target, target, -target, target, speed, timeout);
     }
 
-    public void liftUp(double speed, int ticks, int timeout){
+    public void liftDown(double speed, int ticks, double timeout){
 
         leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -464,7 +465,7 @@ public class RightFieldFeedbackV2 extends LinearOpMode {
 
     }
 
-    public void liftDown(double speed, int ticks, int timeout){
+    public void liftUp(double speed, int ticks, double timeout){
 
         leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
