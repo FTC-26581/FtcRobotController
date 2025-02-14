@@ -54,7 +54,7 @@ public class RightFieldFeedbackV2 extends LinearOpMode {
     double WHEEL_DIAMETER_INCHES = WHEEL_DIAMETER_MILLIMETERS*0.039;
     double COUNTS_PER_INCH = ticksPR / (WHEEL_DIAMETER_INCHES * 3.1415);//11.3477 pules per inch with 96mm
 
-    double driveSpeed = 0.6;
+    double driveSpeed = 0.75;
 
     //Pincher servos
     Servo rightPinch;
@@ -165,7 +165,7 @@ public class RightFieldFeedbackV2 extends LinearOpMode {
         openPinch();
         moveArm(-0.8, 0.3);
         frontArm.setPower(-0.5);
-        backward(driveSpeed, 3, 2);
+        backward(driveSpeed, 3, 1);
         liftDown(0.8, 390, 2);
         right(driveSpeed, 28, 2);
         forward(driveSpeed, 24, 2);
