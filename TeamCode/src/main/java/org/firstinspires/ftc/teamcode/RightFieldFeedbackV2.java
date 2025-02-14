@@ -36,9 +36,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 
-@Autonomous(name="RightFieldFeedback", group="Robot")
+@Autonomous(name="RightFieldV2", group="Robot")
 
-public class RightFieldFeedback extends LinearOpMode {
+public class RightFieldFeedbackV2 extends LinearOpMode {
 
     //Declaring DcMotor Objects
     private DcMotor leftFrontDrive = null;
@@ -48,21 +48,21 @@ public class RightFieldFeedback extends LinearOpMode {
     private DcMotor rightHexLift = null;
     private DcMotor leftHexLift = null;
     private DcMotor frontArm = null;
-    
+
     double ticksPR = 537.6;
     double WHEEL_DIAMETER_MILLIMETERS = 96.8;
     double WHEEL_DIAMETER_INCHES = WHEEL_DIAMETER_MILLIMETERS*0.039;
     double COUNTS_PER_INCH = ticksPR / (WHEEL_DIAMETER_INCHES * 3.1415);//11.3477 pules per inch with 96mm
-    
+
     double driveSpeed = 0.6;
-    
+
     //Pincher servos
     Servo rightPinch;
     Servo leftPinch;
-    
+
     double pinchPos;
     double pinch2Pos;
-    
+
     //Declare Power Variables for Mechanum Drive
     static double leftFrontPower;
     static double rightFrontPower;
@@ -71,16 +71,16 @@ public class RightFieldFeedback extends LinearOpMode {
 
     //Setup Runtime
     private final ElapsedTime     runtime = new ElapsedTime();
-    
+
     //Declare Mechanum Drive Math Variables
     double max;
     double axial;
     double lateral;
     double yaw;
-    
+
     //Lift power
     double liftPower = 0.0;
-    
+
     int globalSleep = 250;
 
     double globalCorrection = 1.084;
@@ -90,49 +90,49 @@ public class RightFieldFeedback extends LinearOpMode {
     public void runOpMode() {
 
         // Initialize the drive system variables.
-        
+
         //Dc Motor Mapping
         leftFrontDrive  = hardwareMap.get(DcMotor.class, "leftFront");
         leftBackDrive  = hardwareMap.get(DcMotor.class, "leftBack");
         rightFrontDrive = hardwareMap.get(DcMotor.class, "rightFront");
         rightBackDrive = hardwareMap.get(DcMotor.class, "rightBack");
-        
+
         rightHexLift  = hardwareMap.get(DcMotor.class, "rightLift");
         leftHexLift  = hardwareMap.get(DcMotor.class, "leftLift");
-        
+
         frontArm  = hardwareMap.get(DcMotor.class, "frontArm");
-        
+
         //Servo Mapping
         rightPinch = hardwareMap.get(Servo.class, "rightPinch");
         leftPinch = hardwareMap.get(Servo.class, "leftPinch");
-        
-        
+
+
         //Set Power Behaviors
         leftFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        
+
         rightHexLift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftHexLift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        
+
         frontArm.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         //Motor Directions//
-        
+
         //Drive Train Motor Directions
         leftFrontDrive.setDirection(DcMotor.Direction.FORWARD);
         leftBackDrive.setDirection(DcMotor.Direction.FORWARD);
         rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
         rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
-        
+
         //Arm Motor Direction
         frontArm.setDirection(DcMotor.Direction.FORWARD);
-        
+
         //Servo Directions
         rightPinch.setDirection(Servo.Direction.FORWARD);
         leftPinch.setDirection(Servo.Direction.REVERSE);
-        
+
         leftFrontDrive.setPower(0);
         rightFrontDrive.setPower(0);
         leftBackDrive.setPower(0);
@@ -142,20 +142,20 @@ public class RightFieldFeedback extends LinearOpMode {
         telemetry.addData("Drive CPI = ", COUNTS_PER_INCH);
         telemetry.addData("Status", "Ready to run");    //
         telemetry.update();
-        
+
         //Close Pincher to Ready Robot
         closePinch();
-        
+
         // Wait for the game to start (driver presses START)
         waitForStart();
-        
+
         //Making sure pincher is closed
         closePinch();
-        
+
         //Making sure arm is all the way the back
         frontArm.setPower(-0.5);
         sleep(250);
-        
+
         //Following is the Autonomous Steps:
 
         liftUp(0.9, 400, 5);
@@ -173,8 +173,8 @@ public class RightFieldFeedback extends LinearOpMode {
         forward(driveSpeed, 42, 5);
         right(driveSpeed, 12, 5);
         backward(driveSpeed, 42, 5);
-        
-        
+
+
         //Stop Motors
         stopDrive();
         //END STEPS//
@@ -183,7 +183,7 @@ public class RightFieldFeedback extends LinearOpMode {
         telemetry.update();
         sleep(1000);
         //END OF PROGRAM//
-        
+
     }
 
     //circumference = 11.87 inches 
@@ -229,7 +229,7 @@ public class RightFieldFeedback extends LinearOpMode {
         sleep(globalSleep);
     }
 
-    public void forwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, int timeout){
+    public void forwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, double timeout){
 
         //Stop and Reset Encoders
         leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -255,8 +255,8 @@ public class RightFieldFeedback extends LinearOpMode {
             leftBackDrive.setTargetPosition(target);
             rightBackDrive.setTargetPosition(target);
 
-            leftHexLift.setTargetPosition(liftTarget);
-            rightHexLift.setTargetPosition(liftTarget);
+            leftHexLift.setTargetPosition(-liftTarget);
+            rightHexLift.setTargetPosition(-liftTarget);
 
             //Set RunMode for Encoders
             leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -271,8 +271,9 @@ public class RightFieldFeedback extends LinearOpMode {
             runtime.reset();
 
             while (opModeIsActive() && runtime.seconds() < timeout &&
-                    ((leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || leftBackDrive.isBusy() || rightBackDrive.isBusy()) ||
-                            (leftHexLift.isBusy() || rightHexLift.isBusy()))) {
+                    (leftFrontDrive.isBusy() || rightFrontDrive.isBusy() ||
+                            leftBackDrive.isBusy() || rightBackDrive.isBusy() ||
+                            leftHexLift.isBusy() || rightHexLift.isBusy())) {
 
                 if(runtime.seconds() >= driveDelay){
                     leftFrontDrive.setPower(speed);
@@ -290,7 +291,7 @@ public class RightFieldFeedback extends LinearOpMode {
                 telemetry.addData("Path1",  "Running to %7d", target);
                 telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
                 telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.addData("Lift",  "Running to %7d", target);
+                telemetry.addData("Lift",  "Running to %7d", liftTarget);
                 telemetry.addData("Lift",  "Lift-at %7d :%7d", leftHexLift.getCurrentPosition(), rightHexLift.getCurrentPosition());
                 telemetry.update();
             }
@@ -310,7 +311,7 @@ public class RightFieldFeedback extends LinearOpMode {
 
     }
 
-    public void backwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, int timeout){
+    public void backwardWithLift(double speed, int inches, double driveDelay, int ticks, double liftDelay, double timeout){
 
         //Stop and Reset Encoders
         leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -352,8 +353,9 @@ public class RightFieldFeedback extends LinearOpMode {
             runtime.reset();
 
             while (opModeIsActive() && runtime.seconds() < timeout &&
-                    ((leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || leftBackDrive.isBusy() || rightBackDrive.isBusy()) ||
-                            (leftHexLift.isBusy() || rightHexLift.isBusy()))) {
+                    (leftFrontDrive.isBusy() || rightFrontDrive.isBusy() ||
+                            leftBackDrive.isBusy() || rightBackDrive.isBusy() ||
+                            leftHexLift.isBusy() || rightHexLift.isBusy())) {
 
                 if(runtime.seconds() >= driveDelay){
                     leftFrontDrive.setPower(speed);
@@ -371,7 +373,7 @@ public class RightFieldFeedback extends LinearOpMode {
                 telemetry.addData("Path1",  "Running to %7d", target);
                 telemetry.addData("Path2",  "Front-at %7d :%7d", leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
                 telemetry.addData("Path2",  "Back--at %7d :%7d", leftBackDrive.getCurrentPosition(), rightBackDrive.getCurrentPosition());
-                telemetry.addData("Lift",  "Running to %7d", target);
+                telemetry.addData("Lift",  "Running to %7d", liftTarget);
                 telemetry.addData("Lift",  "Lift-at %7d :%7d", leftHexLift.getCurrentPosition(), rightHexLift.getCurrentPosition());
                 telemetry.update();
             }
@@ -423,88 +425,88 @@ public class RightFieldFeedback extends LinearOpMode {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, target, -target, target, speed, timeout);
     }
-    
+
     public void liftUp(double speed, int ticks, int timeout){
-        
+
         leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
+
         int target;
-        
+
         if(opModeIsActive()){
-            
+
             target = ticks;
-            
+
             leftHexLift.setTargetPosition(target);
             rightHexLift.setTargetPosition(target);
-            
+
             leftHexLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
             rightHexLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
+
             runtime.reset();
             leftHexLift.setPower(speed);
             rightHexLift.setPower(speed);
-            
+
             while (opModeIsActive() && (runtime.seconds() < timeout) && (leftHexLift.isBusy() && rightHexLift.isBusy())) {
                 // Display it for the driver.
                 telemetry.addData("Path1",  "Running to %7d", target);
                 telemetry.addData("Path2",  "Lift-at %7d :%7d", leftHexLift.getCurrentPosition(), rightHexLift.getCurrentPosition());
                 telemetry.update();
             }
-            
+
             //Stop Drive Motors
             leftHexLift.setPower(0);
             rightHexLift.setPower(0);
-            
+
             sleep(globalSleep);
-            
+
         }
-        
-    }
-    
-    public void liftDown(double speed, int ticks, int timeout){
-        
-        leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        int target;
-        
-        if(opModeIsActive()){
-            
-            target = ticks;
-            
-            leftHexLift.setTargetPosition(-target);
-            rightHexLift.setTargetPosition(-target);
-            
-            leftHexLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightHexLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            
-            runtime.reset();
-            leftHexLift.setPower(speed);
-            rightHexLift.setPower(speed);
-            
-            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftHexLift.isBusy() && rightHexLift.isBusy())) {
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d", target);
-                telemetry.addData("Path2",  "Lift-at %7d :%7d", leftHexLift.getCurrentPosition(), rightHexLift.getCurrentPosition());
-                telemetry.update();
-            }
-            
-            //Stop Drive Motors
-            leftHexLift.setPower(0);
-            rightHexLift.setPower(0);
-            
-            sleep(globalSleep);
-            
-        }
-        
+
     }
 
-    
+    public void liftDown(double speed, int ticks, int timeout){
+
+        leftHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightHexLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        int target;
+
+        if(opModeIsActive()){
+
+            target = ticks;
+
+            leftHexLift.setTargetPosition(-target);
+            rightHexLift.setTargetPosition(-target);
+
+            leftHexLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            rightHexLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+            runtime.reset();
+            leftHexLift.setPower(speed);
+            rightHexLift.setPower(speed);
+
+            while (opModeIsActive() && (runtime.seconds() < timeout) && (leftHexLift.isBusy() && rightHexLift.isBusy())) {
+                // Display it for the driver.
+                telemetry.addData("Path1",  "Running to %7d", target);
+                telemetry.addData("Path2",  "Lift-at %7d :%7d", leftHexLift.getCurrentPosition(), rightHexLift.getCurrentPosition());
+                telemetry.update();
+            }
+
+            //Stop Drive Motors
+            leftHexLift.setPower(0);
+            rightHexLift.setPower(0);
+
+            sleep(globalSleep);
+
+        }
+
+    }
+
+
     /*Drive Control and Calculation Functions*/
     //Calculate Power for Motors using the axial, lateral & yaw variables.
     public void calcPower() {
-        
+
         // Combine the control requests for each axis-motion to determine each wheel's power.
         // Set up a variable for each drive wheel to save the power level for telemetry.
         leftFrontPower  = axial + lateral + yaw;
@@ -525,25 +527,25 @@ public class RightFieldFeedback extends LinearOpMode {
             rightBackPower  /= max;
         }
     }
-    
+
     //Send The Calculated Power from calcPower Function.
     public void sendPower() {
         calcPower();
-        
+
         rightPinch.setPosition(pinch2Pos);
         leftPinch.setPosition(pinchPos);
-        
+
         //Send Power for Lift Motors
         rightHexLift.setPower(liftPower);
         leftHexLift.setPower(liftPower);
-        
+
         // Send calculated power to wheels
         leftFrontDrive.setPower(leftFrontPower);
         rightFrontDrive.setPower(rightFrontPower);
         leftBackDrive.setPower(leftBackPower);
         rightBackDrive.setPower(rightBackPower);
     }
-    
+
     //Set Power to Zero for all Motors
     private void stopDrive(){
         axial=0;
@@ -551,25 +553,25 @@ public class RightFieldFeedback extends LinearOpMode {
         yaw=0;
         liftPower = 0;
         sendPower();
-        
+
         leftFrontDrive.setPower(0);
         rightFrontDrive.setPower(0);
         leftBackDrive.setPower(0);
         rightBackDrive.setPower(0);
     }
-    
+
     /*Time Functions*/
     //Function to wait specified time in seconds without stopping robot.
     private void waitWhile(double time){
-        
+
         runtime.reset();
-        
+
         while (opModeIsActive() && (runtime.seconds() < time)) {
             telemetry.addData("Path", " %4.1f S Elapsed", runtime.seconds());
             telemetry.update();
         }
     }
-    
+
     /*Pincher Functions*/
     //Opens the pincher
     private void openPinch(){
@@ -577,15 +579,15 @@ public class RightFieldFeedback extends LinearOpMode {
         pinch2Pos = 0.35;
         sendPower();
     }
-    
+
     //Closes the pincher
     private void closePinch(){
         pinchPos = 0;
         pinch2Pos = 0;
         sendPower();
     }
-    
-    
+
+
     /*Timed Movement Functions*/
     private void moveArm(double power, double time){
         frontArm.setPower(power);
