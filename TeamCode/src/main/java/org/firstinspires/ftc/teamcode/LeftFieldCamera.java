@@ -247,8 +247,8 @@ public class LeftFieldCamera extends LinearOpMode {
         frontArm.setPower(-0.5);//Set arm power to move back and keep it there
         //backward(driveSpeed, 5, 1);//Move back from basket
         //liftDown(1.0, 500, 4);//Bring lift down
-        backwardWithLift(0.3, 5, 0, -600, 0, 3);
-        turnRight(driveSpeed, 29.5, 3);//Turn to face next sample
+        backwardWithLift(0.3, 5, 0, -700, 0, 3);
+        turnRight(0.75, 29.5, 3);//Turn to face next sample
 
         //Stop Motors
         stopDrive();
