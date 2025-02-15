@@ -42,9 +42,9 @@ import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 
 
-@Autonomous(name="blueSpecimenRightField", group="Robot")
+@Autonomous(name="BlueSpecimenRightField", group="Robot")
 
-public class blueSpecimenAuto extends LinearOpMode {
+public class BlueSpecimenAuto extends LinearOpMode {
 
     //Declaring DcMotor Objects
     private DcMotor leftFrontDrive = null;
@@ -93,7 +93,7 @@ public class blueSpecimenAuto extends LinearOpMode {
 
     // Declare the webcam and pipeline objects
     private OpenCvCamera webcam;
-    private blueSpecDetectPipeline pipeline;
+    private BlueSpecDetectPipeline pipeline;
 
     //Main OpMode Code \/
     @Override
@@ -156,7 +156,7 @@ public class blueSpecimenAuto extends LinearOpMode {
         webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
 
         // Initializes our custom pipeline. (Make sure SampleDetectionPipeline is available.)
-        pipeline = new blueSpecDetectPipeline();//Create a new SampleDetectionPipeline object and names it pipeline.
+        pipeline = new BlueSpecDetectPipeline();//Create a new SampleDetectionPipeline object and names it pipeline.
         webcam.setPipeline(pipeline);//Sets the pipeline to to use.
 
         // Open the camera asynchronously. Asynchronous means that the camera will start opening in the background and your program will continue executing.
@@ -194,31 +194,36 @@ public class blueSpecimenAuto extends LinearOpMode {
 
         //Following is the Autonomous Steps:
 
-        liftUp(1, 275, 3);
-        forward(driveSpeed, 28, 3);
-        moveArm(0.4, 0.1);
-        liftUp(1, 150, 3);
-        openPinch();
-        moveArm(-0.8, 0.3);
-        frontArm.setPower(-0.5);
+        liftUp(1, 275, 3);//Lift slide up to prepare to clip specimen
+        forward(driveSpeed, 28, 3);//Drive to submersible
+        moveArm(0.4, 0.1);//move arm out a little
+        liftUp(1, 150, 3);//Lift up to clip specimen
+        openPinch();//Let go of specimen
+        moveArm(-0.8, 0.3);//Move arm back
+        frontArm.setPower(-0.5);//keep arm back
+
         backward(driveSpeed, 3, 1);
-        liftDown(0.8, 320, 2);
+        liftDown(0.8, 200, 2);
         right(driveSpeed, 28, 2);
+
         forward(driveSpeed, 24, 2);
         right(driveSpeed, 13, 2);
         backward(driveSpeed, 42, 2);
         forward(driveSpeed, 20, 2);
-        turnRight(driveSpeed, 30, 2);
-        sleep(1000);
-        moveArm(0.3, 0.6);
-        forward(driveSpeed, 12, 2);
-        liftDown(1, 50, 1);
+
+        turnRight(driveSpeed, 42, 2);
+        sleep(2000);
+        moveArm(0.7, 0.6);
+        forward(driveSpeed, 10, 2);
+        alignSpecimen(2.5,30, 0.5, 1, 0.5);
+        liftDown(1, 140, 1);
         closePinch();
         sleep(250);
-        moveArm(-0.6, 0.5);
-        liftUp(1, 350, 2);
-        turnLeft(driveSpeed, 30, 2);
-        left(driveSpeed, 12, 2);
+        moveArm(-1, 1);
+        frontArm.setPower(-0.5);
+        liftUp(1, 100, 2);
+        turnLeft(driveSpeed, 42, 2);
+        left(driveSpeed, 20, 2);
 
 
         //Stop Motors

@@ -17,7 +17,7 @@ import java.util.List;
 // This detection pipeline was created by FTC Team 26581, Tundra Tech.
 // It is originally configured for FTC Into The Deep Season and may need to be modified for your specific use case.
  */
-public class blueSpecDetectPipeline extends OpenCvPipeline {
+public class BlueSpecDetectPipeline extends OpenCvPipeline {
     // These variables will hold the sample’s center and any other data you need
     //Point is a class that holds 2 doubles (x, y) for a 2D point.
     private Point sampleCenter = null;

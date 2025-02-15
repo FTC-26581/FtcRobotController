@@ -281,10 +281,10 @@ public class SnowRoverV2 extends LinearOpMode {
             }
 
 
-            if(gamepad2.left_bumper&&(armPos<50)){
-                armPower=0.3;
+            if(gamepad2.left_bumper){
+                armPower=0.5;
             }else if(gamepad2.right_bumper){
-                armPower=-0.9;
+                armPower=-1;
             }else{
                 armPower=0;
             }
