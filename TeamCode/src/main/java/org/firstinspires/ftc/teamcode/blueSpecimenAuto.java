@@ -35,10 +35,16 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.opencv.core.Point;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
 
-@Autonomous(name="Two Specimen RightField", group="Robot")
 
-public class twoSpecimenAuto extends LinearOpMode {
+@Autonomous(name="blueSpecimenRightField", group="Robot")
+
+public class blueSpecimenAuto extends LinearOpMode {
 
     //Declaring DcMotor Objects
     private DcMotor leftFrontDrive = null;
@@ -84,6 +90,10 @@ public class twoSpecimenAuto extends LinearOpMode {
     int globalSleep = 100;
 
     double globalCorrection = 1.084;
+
+    // Declare the webcam and pipeline objects
+    private OpenCvCamera webcam;
+    private blueSpecDetectPipeline pipeline;
 
     //Main OpMode Code \/
     @Override
@@ -137,6 +147,32 @@ public class twoSpecimenAuto extends LinearOpMode {
         rightFrontDrive.setPower(0);
         leftBackDrive.setPower(0);
         rightBackDrive.setPower(0);
+
+        // Initialize the webcam and pipeline.
+        //cameraMonitorViewId is the container we will use to display the camera stream
+        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        //Set the webcam object to the instance of the webcam
+        //Make sure to change the name of the webcam to the one you are using("Webcam 1" is the default name).
+        webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
+
+        // Initializes our custom pipeline. (Make sure SampleDetectionPipeline is available.)
+        pipeline = new blueSpecDetectPipeline();//Create a new SampleDetectionPipeline object and names it pipeline.
+        webcam.setPipeline(pipeline);//Sets the pipeline to to use.
+
+        // Open the camera asynchronously. Asynchronous means that the camera will start opening in the background and your program will continue executing.
+        webcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
+            @Override//Override the onOpened method. Overriding is the action of defining a new behavior for a method in the subclass.
+            public void onOpened() {
+                // Start streaming at 320x240. Adjust resolution as needed.
+                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);//Starts streaming the camera feed.
+            }
+            @Override
+            //On error method is called when an error occurs.
+            public void onError(int errorCode) {
+                telemetry.addData("Camera Error", errorCode);
+                telemetry.update();
+            }
+        });
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("Drive CPI = ", COUNTS_PER_INCH);
@@ -200,6 +236,57 @@ public class twoSpecimenAuto extends LinearOpMode {
 
     /*Feedback Control Functions*/
 
+    public void alignSpecimen(double timeout, int margin, double speed, double increment, double inctime) {
+        // Vision-based alignment: adjust lateral position until the sample is centered
+        telemetry.addData("Vision", "Aligning with sample...");
+        telemetry.update();
+
+        runtime.reset();
+
+        // Loop until the sample is centered within a tolerance(10 pixels)
+        while (opModeIsActive()&& runtime.seconds() < timeout) {
+            openPinch();
+            Point sampleCenter = pipeline.getSampleCenter();  // Gets the center coordinates of the sample on the camera.
+            if (sampleCenter != null) {
+                double errorX = sampleCenter.x - 160;  // 160 = center of a 320-pixel wide image
+                double errorY = sampleCenter.y - 100;  // 120 = center of a 240-pixel tall image
+                telemetry.addData("Sample Center", sampleCenter.toString());
+                telemetry.addData("Error X", errorX);
+                telemetry.addData("Error Y", errorY);
+                telemetry.update();
+
+                // Check if sample is aligned (within 10 pixels)
+                if (Math.abs(errorX) < margin && Math.abs(errorY) < margin) {
+                    telemetry.addData("Status", "Aligned!");
+                    telemetry.update();
+                    break;  // Exit the loop when aligned
+                }
+
+                // Adjust X position: if errorX is positive, sample is to the right, so move left; if negative, move right.
+                if (errorX > 0) {
+                    // Move left slightly. Adjust speed, distance, and timeout.
+                    left(speed, increment, inctime);
+                } else {
+                    // Move right slightly.
+                    right(speed, increment, inctime);
+                }
+                //Adjust Y Position:
+                if (errorY > 0) {
+                    //Move forward slightly
+                    forward(speed, increment, inctime);
+                } else {
+                    //Move backward slightly
+                    backward(speed, increment, inctime);
+                }
+            } else {
+                //If there is no sample detected then
+                telemetry.addData("Vision", "Sample not detected");
+                telemetry.update();
+                sleep(250);  // Short delay between adjustments
+            }
+
+        }
+    }
     private void runDrive(int lfTarget, int rfTarget, int lbTarget, int rbTarget, double speed, double timeout) {
         // Reset encoders
         leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -403,35 +490,35 @@ public class twoSpecimenAuto extends LinearOpMode {
 
     }
 
-    public void forward(double speed, double inches, int timeout) {
+    public void forward(double speed, double inches, double timeout) {
         // For forward movement, all motors move the same direction.
         int target = (int)(inches * COUNTS_PER_INCH * (globalCorrection - 0.05));
         runDrive(target, target, target, target, speed, timeout);
     }
 
-    public void backward(double speed, double inches, int timeout) {
+    public void backward(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, -target, -target, -target, speed, timeout);
     }
 
-    public void right(double speed, double inches, int timeout) {
+    public void right(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         // For right strafe the front left and back right go forward; the other two go in reverse.
         runDrive(target, -target, -target, target, speed, timeout);
     }
 
-    public void left(double speed, double inches, int timeout) {
+    public void left(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, target, target, -target, speed, timeout);
     }
 
-    public void turnRight(double speed, double inches, int timeout) {
+    public void turnRight(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         // For turning right, the left motors move forward and right motors move backward.
         runDrive(target, -target, target, -target, speed, timeout);
     }
 
-    public void turnLeft(double speed, double inches, int timeout) {
+    public void turnLeft(double speed, double inches, double timeout) {
         int target = (int)(inches * COUNTS_PER_INCH * globalCorrection);
         runDrive(-target, target, -target, target, speed, timeout);
     }
