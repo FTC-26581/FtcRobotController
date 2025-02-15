@@ -210,17 +210,17 @@ public class LeftFieldCamera extends LinearOpMode {
         leftHexLift.setPower(-0.3);
         rightHexLift.setPower(-0.3);
         forward(driveSpeed, 3, 1);
-        moveArm(0.3, 0.3);//Move arm out to drop sample
+        moveArm(0.6, 0.2);//Move arm out to drop sample
         sleep(50);//wait for arm to move
         openPinch();//Open pinch to drop sample
-        frontArm.setPower(-0.6);//Set arm power to move back and keep it there
+        frontArm.setPower(-0.5);//Set arm power to move back and keep it there
 
         //Step 2: Move into position to pick up sample
         backward(driveSpeed, 8, 1);//move away from basket
         liftDown(1.0, 520, 2);//bring lift down
         turnRight(0.65, 30, 2);//Turn to face sample
-        right(driveSpeed, 3.7, 1);//Small adjustment to face sample
-        moveArm(0.3, 0.6);//Move arm out to pick up sample
+        right(driveSpeed, 3.8, 1);//Small adjustment to face sample
+        moveArm(0.7, 0.4);//Move arm out to pick up sample
         forward(driveSpeed, 6.7, 1);//Move to sample
         openPinch();
         alignSample(2, 45, 0.5, 0.5, 0.8);//Align with sample using camera
@@ -232,7 +232,7 @@ public class LeftFieldCamera extends LinearOpMode {
         closePinch();//close pinch to pick up sample
         sleep(250);//wait for pinch to close
         moveArm(-1.0, 1.0);//Move arm back in
-        frontArm.setPower(-0.5);//Set arm power to move back and keep it there
+        frontArm.setPower(-0.7);//Set arm power to move back and keep it there
         turnLeft(0.75, 32, 1.5);//turn to face basket
         left(driveSpeed, 3, 1);//line up with basket
         //liftUp(1.0, 710, 3);//Lift arm up to drop sample
@@ -241,7 +241,7 @@ public class LeftFieldCamera extends LinearOpMode {
 
         //Step 4: Drop sample and move to next sample
         sleep(100);//wait for robot to stop moving
-        moveArm(0.3, 0.3);//Move arm out to drop sample
+        moveArm(0.6, 0.3);//Move arm out to drop sample
         sleep(50);//wait for arm to move
         openPinch();//Open pinch to drop sample
         frontArm.setPower(-0.5);//Set arm power to move back and keep it there
