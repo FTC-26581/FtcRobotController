@@ -202,7 +202,7 @@ public class LeftFieldCamera extends LinearOpMode {
         //right(driveSpeed, 8, 2);//Move to the right to be away from the wall
         //turnLeft(driveSpeed, 8.5, 2);//Turn to face the basket
         //right(driveSpeed, 15, 3);//Move to face the basket
-        rightForward(driveSpeed, 35, 2.0);
+        rightForward(driveSpeed, 31, 2.0);
         turnLeft(driveSpeed, 8.5, 1.9);
         //forward(driveSpeed, 10, 2);//move to basket
         //liftUp(1.0, 730, 4);//Lift arm up to be ready to drop sample in higher basket

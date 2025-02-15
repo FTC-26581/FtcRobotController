@@ -28,7 +28,7 @@ public class blueSpecDetectPipeline extends OpenCvPipeline {
     // Scalar is a class that holds 3 doubles (H, S, V) for the HSV color space.
     //The following two lines are for setting the HSV values for detecting game pieces
     //Change these as needed.
-    private final Scalar lowerHSV = new Scalar(18, 69, 127); // adjust as needed
+    private final Scalar lowerHSV = new Scalar(82, 52, 89); // adjust as needed
     private final Scalar upperHSV = new Scalar(179, 255, 255); // adjust as needed
 
     //processFrame is a method that is called by the OpenCvCamera every frame.
