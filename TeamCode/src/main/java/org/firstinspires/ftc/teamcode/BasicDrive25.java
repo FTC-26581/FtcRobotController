@@ -59,13 +59,6 @@ public class BasicDrive25 extends LinearOpMode {
     //Slow Drive State
     int slowDrive = 0;
 
-    //Variables for arm
-    double armCPR = 288;
-
-    //Pincher Finger Position
-    double pinchPos = 0.0;
-    double pinch2Pos = 0.0;
-
     public void mechanum(){
 
         if((gamepad1.left_stick_y!=0)||(gamepad1.right_stick_x!=0)||(gamepad1.right_trigger!=0)||(gamepad1.left_trigger!=0)){
