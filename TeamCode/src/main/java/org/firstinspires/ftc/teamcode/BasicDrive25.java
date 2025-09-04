@@ -38,153 +38,47 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name="BasicDrive25", group="Linear OpMode")
 
+
 public class BasicDrive25 extends LinearOpMode {
 
-    // Define constants at the top of your class
-    private static final double SLOW_DRIVE_SCALE = 1.0 / 3.0;
-    private static final long BUTTON_DEBOUNCE_MS = 150;
-
-    //Mechanum Variables
-    double max;
-
-    double axial;
-    double lateral;
-    double yaw;
-
-    double leftFrontPower;
-    double rightFrontPower;
-    double leftBackPower;
-    double rightBackPower;
-
-    //Slow Drive State
-    int slowDrive = 0;
-
-    public void mechanum(){
-
-        if((gamepad1.left_stick_y!=0)||(gamepad1.right_stick_x!=0)||(gamepad1.right_trigger!=0)||(gamepad1.left_trigger!=0)){
-            // POV Mode uses left joystick to go forward, and right joystick to rotate, and triggers to strafe.
-            axial   = gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
-            lateral =  -(gamepad1.right_trigger-gamepad1.left_trigger);
-            yaw     =  -gamepad1.right_stick_x;
-
-            if(slowDrive==1){
-                axial *= SLOW_DRIVE_SCALE;
-                lateral *= SLOW_DRIVE_SCALE;
-                yaw *= SLOW_DRIVE_SCALE;
-            }
-
-        }else{
-            dpadMove();
-            yaw=0;
-        }
-
-        // Combine the joystick requests for each axis-motion to determine each wheel's power.
-        // Set up a variable for each drive wheel to save the power level for telemetry.
-        leftFrontPower  = axial + lateral + yaw;
-        rightFrontPower = axial - lateral - yaw;
-        leftBackPower   = axial - lateral + yaw;
-        rightBackPower  = axial + lateral - yaw;
-
-        // Normalize the values so no wheel power exceeds 100%
-        // This ensures that the robot maintains the desired motion.
-        max = Math.max(Math.abs(leftFrontPower), Math.abs(rightFrontPower));
-        max = Math.max(max, Math.abs(leftBackPower));
-        max = Math.max(max, Math.abs(rightBackPower));
-
-        if (max > 1.0) {
-            leftFrontPower  /= max;
-            rightFrontPower /= max;
-            leftBackPower   /= max;
-            rightBackPower  /= max;
-        }
-
-    }
-
-    public void toggleSlowDrive() {
-        slowDrive = (slowDrive == 0) ? 1 : 0;
-        // Optional: Add telemetry feedback if needed.
-        telemetry.addData("Slow Drive", slowDrive == 1 ? "Enabled" : "Disabled");
-        telemetry.update();
-    }
-
-    boolean prevSlowToggle = false;
-
-    // Declare OpMode members for DC motors.
     private final ElapsedTime runtime = new ElapsedTime();
+    private boolean prevSlowToggle = false;
+    private MechanumDrive drive;
     private DcMotor frontArm = null;
+
 
     @Override
     public void runOpMode() {
+        // Map motors with custom names if desired
+        DcMotor leftFrontDrive = hardwareMap.get(DcMotor.class, "frontLeft");
+        DcMotor leftBackDrive = hardwareMap.get(DcMotor.class, "backLeft");
+        DcMotor rightFrontDrive = hardwareMap.get(DcMotor.class, "frontRight");
+        DcMotor rightBackDrive = hardwareMap.get(DcMotor.class, "backRight");
 
-        // Initialize the hardware variables. Note that the strings used here must correspond
-        // to the names assigned during the robot configuration step on the DS or RC devices.
+        // Pass mapped motors to MechanumDrive
+        drive = new MechanumDrive(leftFrontDrive, rightFrontDrive, leftBackDrive, rightBackDrive, gamepad1);
 
-        //DC Motor Mapping and Power Behavior
-        DcMotor leftFrontDrive = hardwareMap.get(DcMotor.class, "leftFront");
-        DcMotor leftBackDrive = hardwareMap.get(DcMotor.class, "leftBack");
-        DcMotor rightFrontDrive = hardwareMap.get(DcMotor.class, "rightFront");
-        DcMotor rightBackDrive = hardwareMap.get(DcMotor.class, "rightBack");
-
-        leftFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        leftBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        //Drive Train Motor Directions
-        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightBackDrive.setDirection(DcMotor.Direction.FORWARD);
-
-        // Wait for the game to start (driver presses START)
         telemetry.addData("Status", "Robot Initialized");
         telemetry.update();
 
         waitForStart();
         runtime.reset();
 
-        // run until STOP is pressed
         while (opModeIsActive()) {
-
             if (gamepad1.left_stick_button && !prevSlowToggle) {
-                toggleSlowDrive();
+                drive.toggleSlowDrive();
+                telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
+                telemetry.update();
             }
             prevSlowToggle = gamepad1.left_stick_button;
 
-            mechanum();
+            drive.mechanum();
+            drive.setMotorPowers();
 
-            // Send calculated power to wheels
-            leftFrontDrive.setPower(leftFrontPower);
-            rightFrontDrive.setPower(rightFrontPower);
-            leftBackDrive.setPower(leftBackPower);
-            rightBackDrive.setPower(rightBackPower);
-
-            //TELEMETRY DATA CODE
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Front left/Right", "%4.2f, %4.2f", leftFrontPower, rightFrontPower);
-            telemetry.addData("Back  left/Right", "%4.2f, %4.2f", leftBackPower, rightBackPower);
+            telemetry.addData("Front left/Right", "%4.2f, %4.2f", drive.leftFrontPower, drive.rightFrontPower);
+            telemetry.addData("Back  left/Right", "%4.2f, %4.2f", drive.leftBackPower, drive.rightBackPower);
             telemetry.update();
-        }
-    }
-
-    public void dpadMove() {
-        if(gamepad1.dpad_up){
-            axial = -0.2;
-        }else
-        if(gamepad1.dpad_down) {
-            axial = 0.2;
-        }else{
-            axial = 0;
-        }
-
-
-        if(gamepad1.dpad_right) {
-            lateral = -0.2;
-        }else
-        if(gamepad1.dpad_left){
-            lateral = 0.2;
-        }else{
-            lateral = 0;
         }
     }
 
@@ -192,14 +86,11 @@ public class BasicDrive25 extends LinearOpMode {
     /*Time Functions*/
     //Function to wait specified time in seconds without stopping robot.
     private void waitWhile(double time){
-
         runtime.reset();
-
         while (opModeIsActive() && (runtime.seconds() < time)) {
             telemetry.addData("Path", " %4.1f S Elapsed", runtime.seconds());
             telemetry.update();
         }
-
     }
 }
 
