@@ -57,7 +57,7 @@ public class LeftFieldCamera extends LinearOpMode {
     double ticksPR = 537.6;
     double WHEEL_DIAMETER_MILLIMETERS = 96.8;
     double WHEEL_DIAMETER_INCHES = WHEEL_DIAMETER_MILLIMETERS*0.039;
-    double COUNTS_PER_INCH = ticksPR / (WHEEL_DIAMETER_INCHES * 3.1415);//11.3477 pules per inch with 96mm
+    double COUNTS_PER_INCH = ticksPR / (WHEEL_DIAMETER_INCHES * 3.1415); //11.3477 pules per inch with 96mm
 
     double driveSpeed = 0.6;
 
