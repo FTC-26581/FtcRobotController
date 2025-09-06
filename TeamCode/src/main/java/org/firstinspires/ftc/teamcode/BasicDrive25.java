@@ -29,12 +29,12 @@
 
 package org.firstinspires.ftc.teamcode;
 
-//import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import org.firstinspires.ftc.teamcode.MechanumFieldRelative;
 
 @TeleOp(name="BasicDrive25", group="Linear OpMode")
 
@@ -43,7 +43,9 @@ public class BasicDrive25 extends LinearOpMode {
 
     private final ElapsedTime runtime = new ElapsedTime();
     private boolean prevSlowToggle = false;
-    private MechanumDrive drive;
+    private boolean prevModeToggle = false;
+    private boolean fieldRelativeMode = false;
+    private MechanumFieldRelative drive;
     private DcMotor frontArm = null;
 
 
@@ -55,8 +57,8 @@ public class BasicDrive25 extends LinearOpMode {
         DcMotor rightFrontDrive = hardwareMap.get(DcMotor.class, "frontRight");
         DcMotor rightBackDrive = hardwareMap.get(DcMotor.class, "backRight");
 
-        // Pass mapped motors to MechanumDrive
-        drive = new MechanumDrive(leftFrontDrive, rightFrontDrive, leftBackDrive, rightBackDrive, gamepad1);
+        // Pass mapped motors to MechanumFieldRelative
+        drive = new MechanumFieldRelative(leftFrontDrive, rightFrontDrive, leftBackDrive, rightBackDrive, gamepad1, hardwareMap);
 
         telemetry.addData("Status", "Robot Initialized");
         telemetry.update();
@@ -65,6 +67,7 @@ public class BasicDrive25 extends LinearOpMode {
         runtime.reset();
 
         while (opModeIsActive()) {
+            // Toggle slow drive
             if (gamepad1.left_stick_button && !prevSlowToggle) {
                 drive.toggleSlowDrive();
                 telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
@@ -72,10 +75,32 @@ public class BasicDrive25 extends LinearOpMode {
             }
             prevSlowToggle = gamepad1.left_stick_button;
 
-            drive.mechanum();
-            drive.setMotorPowers();
+            // Toggle field-relative/normal mode with X button
+            if (gamepad1.x && !prevModeToggle) {
+                fieldRelativeMode = !fieldRelativeMode;
+                telemetry.addData("Drive Mode", fieldRelativeMode ? "Field Relative" : "Robot Centric");
+                telemetry.update();
+            }
+            prevModeToggle = gamepad1.x;
+
+            // Get joystick values
+            double forward = -gamepad1.left_stick_y;
+            double strafe = gamepad1.left_stick_x;
+            double rotate = gamepad1.right_stick_x;
+
+            if (gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right) {
+                // Use dpad for movement
+                drive.dpadMove();
+            } else {
+                if (fieldRelativeMode) {
+                    drive.driveFieldRelative(forward, strafe, rotate);
+                } else {
+                    drive.drive(forward, strafe, rotate);
+                }
+            }
 
             telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("Drive Mode", fieldRelativeMode ? "Field Relative" : "Robot Centric");
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", drive.leftFrontPower, drive.rightFrontPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", drive.leftBackPower, drive.rightBackPower);
             telemetry.update();
