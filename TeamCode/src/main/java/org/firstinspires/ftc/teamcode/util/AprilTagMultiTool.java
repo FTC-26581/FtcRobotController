@@ -1,4 +1,56 @@
-package org.firstinspires.ftc.teamcode.util;
+package org.firstinspires.ftc.teamcode;
+
+/*
+AprilTagMultiTool Usage Instructions
+====================================
+
+This utility class provides a simple, unified interface for AprilTag detection, camera control, and telemetry in FTC OpModes.
+
+Basic Usage:
+------------
+1. Create an instance in your OpMode:
+    AprilTagMultiTool aprilTagUtil = new AprilTagMultiTool(hardwareMap, true, "Webcam 1", null);
+    // For two webcams: new AprilTagMultiTool(hardwareMap, true, "Webcam 1", "Webcam 2");
+    // For phone camera: new AprilTagMultiTool(hardwareMap, false, null, null);
+
+2. Start streaming:
+    aprilTagUtil.resumeStreaming();
+
+3. In your main loop, add AprilTag telemetry:
+    aprilTagUtil.addTelemetry(this); // 'this' is your LinearOpMode
+    telemetry.update();
+
+4. To switch cameras (if using two webcams):
+    aprilTagUtil.switchToWebcam1();
+    aprilTagUtil.switchToWebcam2();
+
+5. To set camera pose (position and orientation):
+    Position pos = new Position(DistanceUnit.INCH, x, y, z, 0);
+    YawPitchRollAngles orient = new YawPitchRollAngles(AngleUnit.DEGREES, yaw, pitch, roll, 0);
+    aprilTagUtil.setCameraPose(pos, orient);
+
+6. To manually set exposure and gain:
+    int minExp = aprilTagUtil.getMinExposure();
+    int maxExp = aprilTagUtil.getMaxExposure();
+    int minGain = aprilTagUtil.getMinGain();
+    int maxGain = aprilTagUtil.getMaxGain();
+    aprilTagUtil.setManualExposure(desiredExposure, desiredGain);
+
+7. To get AprilTag detections:
+    List<AprilTagDetection> detections = aprilTagUtil.getDetections();
+
+8. When finished, close the portal:
+    aprilTagUtil.close();
+
+Notes:
+------
+- You can use AprilTag detections for navigation, localization, or autonomous actions.
+- Use telemetry to display tag info, or process detections for robot control.
+- For advanced camera switching, use ClassFactory for switchable cameras.
+- Always call close() at the end of your OpMode to release camera resources.
+
+See the FTC SDK samples for more advanced AprilTag usage and camera configuration.
+*/
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
