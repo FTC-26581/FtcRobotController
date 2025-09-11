@@ -33,16 +33,16 @@ public class AutoAprilTagBasic extends LinearOpMode {
 
         waitForStart();
 
-        // Example: Look for a tag for up to 5 seconds, then drive forward if found
+
+        // Path planning: Look for tags 1, 2, or 3 and drive a different path for each
         long startTime = System.currentTimeMillis();
-        boolean tagFound = false;
-        int targetTagId = 1; // Change to your desired tag ID
-        while (opModeIsActive() && System.currentTimeMillis() - startTime < 5000 && !tagFound) {
+        int detectedTagId = -1;
+        while (opModeIsActive() && System.currentTimeMillis() - startTime < 5000 && detectedTagId == -1) {
             List<AprilTagDetection> detections = aprilTagUtil.getDetections();
             for (AprilTagDetection detection : detections) {
-                if (detection.id == targetTagId) {
-                    tagFound = true;
-                    telemetry.addData("Tag Found!", detection.id);
+                if (detection.id == 1 || detection.id == 2 || detection.id == 3) {
+                    detectedTagId = detection.id;
+                    telemetry.addData("Tag Found!", detectedTagId);
                     break;
                 }
             }
@@ -51,15 +51,26 @@ public class AutoAprilTagBasic extends LinearOpMode {
             sleep(50);
         }
 
-        if (tagFound) {
-            // Drive forward for 1 second
+        // Decision logic: choose path based on tag
+        if (detectedTagId == 1) {
+            telemetry.addData("Path", "Tag 1: Drive Forward");
             drive.drive(0.5, 0, 0); // Forward
+            sleep(1000);
+            drive.drive(0, 0, 0); // Stop
+        } else if (detectedTagId == 2) {
+            telemetry.addData("Path", "Tag 2: Strafe Left");
+            drive.drive(0, -0.5, 0); // Left
+            sleep(1000);
+            drive.drive(0, 0, 0); // Stop
+        } else if (detectedTagId == 3) {
+            telemetry.addData("Path", "Tag 3: Strafe Right");
+            drive.drive(0, 0.5, 0); // Right
             sleep(1000);
             drive.drive(0, 0, 0); // Stop
         } else {
             telemetry.addData("Tag Not Found", "No action taken");
-            telemetry.update();
         }
+        telemetry.update();
 
         aprilTagUtil.close();
     }
