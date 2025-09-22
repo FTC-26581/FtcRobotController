@@ -29,7 +29,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -46,7 +46,7 @@ public class BasicDrive25 extends LinearOpMode {
     private boolean prevModeToggle = false;
     private boolean fieldRelativeMode = false;
     private MechanumFieldRelative drive;
-    private DcMotor frontArm = null;
+    private boolean shooterState = false;
 
 
     @Override
@@ -56,6 +56,11 @@ public class BasicDrive25 extends LinearOpMode {
         DcMotor leftBackDrive = hardwareMap.get(DcMotor.class, "backLeft");
         DcMotor rightFrontDrive = hardwareMap.get(DcMotor.class, "frontRight");
         DcMotor rightBackDrive = hardwareMap.get(DcMotor.class, "backRight");
+
+        DcMotor shooter = hardwareMap.get(DcMotor.class, "shooter");
+
+        CRServo servo1 = hardwareMap.get(CRServo.class, "servo1");
+        CRServo servo2 = hardwareMap.get(CRServo.class, "servo2");
 
         // Pass mapped motors to MechanumFieldRelative
         drive = new MechanumFieldRelative(leftFrontDrive, rightFrontDrive, leftBackDrive, rightBackDrive, gamepad1, hardwareMap);
@@ -84,9 +89,9 @@ public class BasicDrive25 extends LinearOpMode {
             prevModeToggle = gamepad1.x;
 
             // Get joystick values
-            double forward = -gamepad1.left_stick_y;
-            double strafe = gamepad1.left_stick_x;
-            double rotate = gamepad1.right_stick_x;
+            double forward = -gamepad1.right_stick_y;
+            double strafe = gamepad1.right_stick_x;
+            double rotate = gamepad1.left_stick_x;
 
             if (gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right) {
                 // Use dpad for movement
@@ -97,6 +102,20 @@ public class BasicDrive25 extends LinearOpMode {
                 } else {
                     drive.drive(forward, strafe, rotate);
                 }
+            }
+
+            if(gamepad2.a){
+                servo1.setPower(1.0);
+                servo2.setPower(-1.0);
+            } else {
+                servo2.setPower(0.0);
+                servo1.setPower(0.0);
+            }
+
+            if(gamepad2.triangle){
+                shooterState = !shooterState;
+                shooter.setPower(shooterState ? 1.0 : 0.0);
+                waitWhile(0.5);
             }
 
             telemetry.addData("Status", "Run Time: " + runtime.toString());

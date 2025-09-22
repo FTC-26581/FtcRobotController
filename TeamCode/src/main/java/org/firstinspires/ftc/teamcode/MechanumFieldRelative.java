@@ -41,8 +41,8 @@ public class MechanumFieldRelative {
 
         imu = hardwareMap.get(IMU.class, "imu");
         RevHubOrientationOnRobot revOrientation = new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD,
-                RevHubOrientationOnRobot.UsbFacingDirection.UP
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
+                RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD
         );
         imu.initialize(new IMU.Parameters(revOrientation));
     }
