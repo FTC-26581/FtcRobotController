@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.util;
 
 /*
 AprilTagMultiTool Usage Instructions
@@ -98,8 +98,10 @@ public class AprilTagMultiTool {
         } else {
             builder.setCamera(BuiltinCameraDirection.BACK);
         }
-        builder.addProcessor(aprilTag);
-        visionPortal = builder.build();
+    builder.addProcessor(aprilTag);
+    // Keep preview running (auto-stop only)
+    builder.setAutoStopLiveView(false);
+    visionPortal = builder.build();
     }
 
     // Allow user to set camera pose
