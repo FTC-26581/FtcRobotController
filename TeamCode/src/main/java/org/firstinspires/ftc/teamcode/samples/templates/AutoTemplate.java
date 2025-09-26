@@ -1,7 +1,9 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.samples.templates;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+
+import org.firstinspires.ftc.teamcode.util.AutoHelper;
 
 /**
  * AutoTemplate - Template for Creating Autonomous OpModes
@@ -34,6 +36,14 @@ public class AutoTemplate extends LinearOpMode {
         autoHelper.setDebugTelemetryEnabled(true);    // Show detailed telemetry
         autoHelper.setDefaultParameters(0.6, 5000);   // 60% power, 5 second timeout
         
+        // Set default movement traversal mode (optional)
+        // DIRECT_VECTOR: Straight line to target (fastest, default)
+        // X_THEN_Y: Move X first, then Y, then rotate (good for avoiding obstacles)
+        // Y_THEN_X: Move Y first, then X, then rotate (alternative obstacle avoidance)
+        // MANHATTAN_AUTO: Automatically choose X or Y first based on larger distance
+        // SEPARATE_PHASES: Pure X, then pure Y, then rotate (most predictable)
+        autoHelper.setDefaultTraversalMode(AutoHelper.MovementTraversalMode.DIRECT_VECTOR);
+        
         // Initialize with cameras (adjust camera names as needed)
         // For single camera: autoHelper.initialize("Webcam 1");
         // For dual cameras: autoHelper.initialize("Webcam 1", "Webcam 2");
@@ -59,20 +69,20 @@ public class AutoTemplate extends LinearOpMode {
      */
     private void runAutonomousRoutine() {
         autoHelper
-            // Example: Move to starting position
+            // Example: Move to starting position (default traversal mode)
             .moveTo(12, 12, 0, "Move to starting position")
             
             // Example: Wait for something
             .waitFor(500, "Brief pause")
             
-            // Example: Score preload
-            .moveTo(24, 36, 90, "Move to high basket")
+            // Example: Score preload using X-then-Y movement (avoids obstacles)
+            .moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.X_THEN_Y, "Move to high basket via X-then-Y")
             .waitFor(1000, "Score preload")
             .moveBy(-6, 0, 0, "Back away")
             
-            // Example: Go to specimen area
+            // Example: Go to specimen area using Y-then-X to avoid field elements
             .turnTo(0, "Turn to specimen area")
-            .moveTo(12, 60, 0, "Move to specimen pickup")
+            .moveTo(12, 60, 0, AutoHelper.MovementTraversalMode.Y_THEN_X, "Move to specimen pickup")
             
             // Example: Custom action
             .addAction("Grab specimen", () -> {
@@ -155,3 +165,53 @@ public class AutoTemplate extends LinearOpMode {
         return true; // Return true for success, false for failure
     }
 }
+
+/*
+MOVEMENT TRAVERSAL MODES - When to Use Each:
+
+1. DIRECT_VECTOR (Default)
+   - Fastest movement to target
+   - Good for open field areas
+   - Robot moves in straight line to target
+   - Use when: No obstacles in path, want maximum speed
+
+2. X_THEN_Y  
+   - Moves X coordinate first, then Y, then rotates
+   - Good for avoiding obstacles in specific patterns
+   - Use when: Need to go around obstacles, want predictable path
+   - Example: Need to move right first to avoid submersible, then forward
+
+3. Y_THEN_X
+   - Moves Y coordinate first, then X, then rotates
+   - Alternative obstacle avoidance pattern
+   - Use when: Need to move forward/back first, then sideways
+   - Example: Need to move forward to clear wall, then strafe to position
+
+4. MANHATTAN_AUTO
+   - Automatically chooses X or Y first based on larger distance
+   - Good general-purpose obstacle avoidance
+   - Use when: Want L-shaped movement but don't know which axis is larger
+   - Example: General movement where you want to minimize total distance
+
+5. SEPARATE_PHASES
+   - Pure strafe, then pure forward/back, then pure rotation
+   - Most predictable and debuggable movement
+   - Each axis moves independently
+   - Use when: Need precise control, debugging complex movements
+   - Example: Fine positioning near scoring areas
+
+USAGE EXAMPLES:
+
+// Use specific traversal mode for one movement:
+autoHelper.moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.X_THEN_Y, "Avoid obstacle");
+
+// Set default mode for all movements:
+autoHelper.setDefaultTraversalMode(AutoHelper.MovementTraversalMode.MANHATTAN_AUTO);
+
+// Mix modes as needed:
+autoHelper
+    .moveTo(12, 12, 0, AutoHelper.MovementTraversalMode.DIRECT_VECTOR, "Quick move to staging")
+    .moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.X_THEN_Y, "Careful move to basket")
+    .moveTo(0, 0, 0, AutoHelper.MovementTraversalMode.DIRECT_VECTOR, "Quick return home")
+    .executeAll();
+*/

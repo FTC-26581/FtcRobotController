@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.util;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -1251,6 +1251,16 @@ public class AdvancedPositioningHelper {
             leftBackDrive.setPower(leftBackPower / max);
             rightBackDrive.setPower(rightBackPower / max);
         }
+    }
+    
+    /**
+     * Public method to set mecanum drive powers (for advanced movement control)
+     * @param forward Forward power (-1.0 to 1.0)
+     * @param strafe Strafe power (-1.0 to 1.0, positive = right)  
+     * @param rotate Rotation power (-1.0 to 1.0, positive = clockwise)
+     */
+    public void setDrivePowers(double forward, double strafe, double rotate) {
+        setMechanumPowers(forward, strafe, rotate);
     }
     
     /**

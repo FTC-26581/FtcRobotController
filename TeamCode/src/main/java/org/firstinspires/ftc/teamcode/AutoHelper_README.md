@@ -75,16 +75,28 @@ autoHelper.setRelocalizationEnabled(true);    // AprilTag recovery
 autoHelper.setStuckDetectionEnabled(true);    // Stuck detection
 autoHelper.setDebugTelemetryEnabled(true);    // Detailed telemetry
 autoHelper.setDefaultParameters(0.7, 4000);   // Power & timeout
+autoHelper.setDefaultTraversalMode(AutoHelper.MovementTraversalMode.X_THEN_Y); // Movement mode
 ```
 
 ## Available Methods
 
 ### Movement (Fluent API)
 
-- `moveTo(x, y, heading, description)` - Move to absolute position
+- `moveTo(x, y, heading, description)` - Move to absolute position (default traversal)
+- `moveTo(x, y, heading, traversalMode, description)` - Move with specific traversal mode
 - `moveBy(deltaX, deltaY, deltaHeading, description)` - Relative movement
 - `turnTo(heading, description)` - Turn to absolute heading
 - `turnBy(deltaHeading, description)` - Turn by relative angle
+
+### Movement Traversal Modes
+
+Choose how the robot moves to target positions:
+
+- `DIRECT_VECTOR` - Straight line to target (fastest, default)
+- `X_THEN_Y` - Move X first, then Y, then rotate (obstacle avoidance)
+- `Y_THEN_X` - Move Y first, then X, then rotate (alternative avoidance)
+- `MANHATTAN_AUTO` - Choose X or Y first based on larger distance
+- `SEPARATE_PHASES` - Pure X, then pure Y, then rotate (most predictable)
 
 ### Timing and Conditions
 
@@ -159,6 +171,67 @@ autoHelper.addStep("Custom APH operation", () -> {
 });
 ```
 
+## Movement Traversal Modes
+
+The AutoHelper supports five different ways to move to target positions:
+
+### 1. DIRECT_VECTOR (Default)
+```java
+autoHelper.moveTo(24, 36, 90, "Move to basket"); // Uses default mode
+```
+- **Behavior**: Straight line to target position
+- **Pros**: Fastest movement, most efficient
+- **Cons**: Can hit obstacles in path
+- **Use when**: Open field areas, maximum speed needed
+
+### 2. X_THEN_Y
+```java
+autoHelper.moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.X_THEN_Y, "Avoid obstacle");
+```
+- **Behavior**: Move X coordinate first, then Y, then rotate
+- **Pros**: Predictable L-shaped path, good obstacle avoidance
+- **Cons**: Longer path than direct vector
+- **Use when**: Need to go around obstacles, strafe then forward pattern
+
+### 3. Y_THEN_X
+```java
+autoHelper.moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.Y_THEN_X, "Forward then strafe");
+```
+- **Behavior**: Move Y coordinate first, then X, then rotate
+- **Pros**: Forward/back first, then strafe pattern
+- **Cons**: Longer path than direct vector
+- **Use when**: Need to clear walls first, forward then strafe pattern
+
+### 4. MANHATTAN_AUTO
+```java
+autoHelper.moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.MANHATTAN_AUTO, "Smart L-path");
+```
+- **Behavior**: Automatically chooses X or Y first based on larger distance
+- **Pros**: Minimizes total distance while avoiding obstacles
+- **Cons**: Path not always predictable
+- **Use when**: Want L-shaped movement but don't know which axis is larger
+
+### 5. SEPARATE_PHASES
+```java
+autoHelper.moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.SEPARATE_PHASES, "Pure axis moves");
+```
+- **Behavior**: Pure strafe, then pure forward/back, then pure rotation
+- **Pros**: Most predictable, each axis independent, easy to debug
+- **Cons**: Slowest method, most phases
+- **Use when**: Need precise control, debugging complex movements
+
+### Setting Default Mode
+```java
+// Set default mode for all movements
+autoHelper.setDefaultTraversalMode(AutoHelper.MovementTraversalMode.X_THEN_Y);
+
+// Individual movements can still override
+autoHelper
+    .moveTo(12, 12, 0, "Uses default X_THEN_Y")
+    .moveTo(24, 36, 90, AutoHelper.MovementTraversalMode.DIRECT_VECTOR, "Override to direct")
+    .executeAll();
+```
+
 ## Best Practices
 
 1. **Always use descriptions**: Make your autonomous readable
@@ -167,6 +240,7 @@ autoHelper.addStep("Custom APH operation", () -> {
 4. **Use dual cameras**: Provides maximum AprilTag visibility
 5. **Check results**: Always verify execution status
 6. **Keep steps atomic**: Each step should do one clear thing
+7. **Choose appropriate traversal modes**: Use DIRECT_VECTOR for speed, Manhattan modes for obstacle avoidance
 
 ## Troubleshooting
 
