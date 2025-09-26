@@ -32,13 +32,12 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.MechanumFieldRelative;
 import org.firstinspires.ftc.teamcode.util.DecodeHelper;
 
-@TeleOp(name="BasicDrive25", group="Linear OpMode")
-
-
+@TeleOp(name="BasicDrive25 Enhanced", group="Linear OpMode")
 public class BasicDrive25 extends LinearOpMode {
 
     private final ElapsedTime runtime = new ElapsedTime();
@@ -49,6 +48,27 @@ public class BasicDrive25 extends LinearOpMode {
     
     // DECODE Helper for artifact shooting
     private DecodeHelper decodeHelper;
+    
+    // Runaway robot prevention
+    private ElapsedTime lastInputTime = new ElapsedTime();
+    private ElapsedTime connectionWatchdog = new ElapsedTime();
+    private static final double INPUT_TIMEOUT = 3.0; // Stop robot if no input for 3 seconds
+    private static final double CONNECTION_TIMEOUT = 1.0; // Check connection every 1 second
+    private Gamepad prevGamepad1 = new Gamepad();
+    private Gamepad prevGamepad2 = new Gamepad();
+    private boolean emergencyStop = false;
+    
+    // Semi-auto actions
+    private boolean semiAutoActive = false;
+    private ElapsedTime semiAutoTimer = new ElapsedTime();
+    private String currentSemiAuto = "";
+    
+    // Button state tracking for semi-auto
+    private boolean prevY1 = false;
+    private boolean prevB1 = false;
+    private boolean prevA1 = false;
+    private boolean prevRightBumper1 = false;
+    private boolean prevLeftBumper1 = false;
 
 
     @Override
@@ -70,8 +90,14 @@ public class BasicDrive25 extends LinearOpMode {
 
         waitForStart();
         runtime.reset();
+        lastInputTime.reset();
+        connectionWatchdog.reset();
 
         while (opModeIsActive()) {
+            // ========== RUNAWAY ROBOT PREVENTION ==========
+            if (!checkGamepadSafety()) {
+                continue; // Skip this loop iteration if safety check fails
+            }
             // Toggle slow drive
             if (gamepad1.left_stick_button && !prevSlowToggle) {
                 drive.toggleSlowDrive();
@@ -88,60 +114,305 @@ public class BasicDrive25 extends LinearOpMode {
             }
             prevModeToggle = gamepad1.x;
 
-            // Get joystick values
-            double forward = -gamepad1.right_stick_y;
-            double strafe = gamepad1.right_stick_x;
-            double rotate = gamepad1.left_stick_x;
+            // ========== SEMI-AUTO ACTIONS ==========
+            handleSemiAutoActions();
+            
+            // ========== DRIVE CONTROLS ==========
+            if (!semiAutoActive && !emergencyStop) {
+                // Get joystick values
+                double forward = -gamepad1.right_stick_y;
+                double strafe = gamepad1.right_stick_x;
+                double rotate = gamepad1.left_stick_x;
 
-            if (gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right) {
-                // Use dpad for movement
-                drive.dpadMove();
-            } else {
-                if (fieldRelativeMode) {
-                    drive.driveFieldRelative(forward, strafe, rotate);
+                if (gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right) {
+                    // Use dpad for movement
+                    drive.dpadMove();
                 } else {
-                    drive.drive(forward, strafe, rotate);
+                    if (fieldRelativeMode) {
+                        drive.driveFieldRelative(forward, strafe, rotate);
+                    } else {
+                        drive.drive(forward, strafe, rotate);
+                    }
                 }
+            } else if (emergencyStop || semiAutoActive) {
+                // Stop all movement during emergency stop or semi-auto
+                drive.drive(0, 0, 0);
             }
 
             // ========== DECODE HELPER CONTROLS ==========
-            
-            // Smart shooting with gamepad2.a (single shot on press, continuous when held)
-            decodeHelper.handleShootButton(gamepad2.a);
-            
-            // Manual shooter control with right trigger (overrides smart shooting)
-            if (gamepad2.right_trigger > 0.1) {
-                decodeHelper.setShooterPower(gamepad2.right_trigger);
-            }
-            
-            // Manual feed servo control with gamepad2.b (for testing/emergency)
-            if (gamepad2.b) {
-                decodeHelper.setFeedPower(1.0);
-            } else if (!decodeHelper.isShooting()) {
-                // Only stop feed if DecodeHelper isn't currently shooting
-                decodeHelper.setFeedPower(0.0);
-            }
-            
-            // Emergency stop all shooting with gamepad2.x
-            if (gamepad2.x) {
+            if (!emergencyStop) {
+                // Smart shooting with gamepad2.a (single shot on press, continuous when held)
+                decodeHelper.handleShootButton(gamepad2.a);
+                
+                // Manual shooter control with right trigger (overrides smart shooting)
+                if (gamepad2.right_trigger > 0.1) {
+                    decodeHelper.setShooterPower(gamepad2.right_trigger);
+                }
+                
+                // Manual feed servo control with gamepad2.b (for testing/emergency)
+                if (gamepad2.b) {
+                    decodeHelper.setFeedPower(1.0);
+                } else if (!decodeHelper.isShooting()) {
+                    // Only stop feed if DecodeHelper isn't currently shooting
+                    decodeHelper.setFeedPower(0.0);
+                }
+                
+                // Emergency stop all shooting with gamepad2.x
+                if (gamepad2.x) {
+                    decodeHelper.reset();
+                }
+            } else {
+                // Emergency stop - shut down all shooting
                 decodeHelper.reset();
             }
 
             // ========== TELEMETRY ==========
-            telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Drive Mode", fieldRelativeMode ? "Field Relative" : "Robot Centric");
-            telemetry.addData("Front left/Right", "%4.2f, %4.2f", drive.leftFrontPower, drive.rightFrontPower);
-            telemetry.addData("Back  left/Right", "%4.2f, %4.2f", drive.leftBackPower, drive.rightBackPower);
-            telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
-            telemetry.addData("", "--- DECODE SHOOTING ---");
-            decodeHelper.updateTelemetry();
-            telemetry.addData("", "--- CONTROLS ---");
-            telemetry.addData("Gamepad2 A", "Smart shooting (hold for continuous)");
-            telemetry.addData("Gamepad2 RT", "Manual shooter power");
-            telemetry.addData("Gamepad2 B", "Manual feed servos");
-            telemetry.addData("Gamepad2 X", "Emergency stop shooting");
+            updateTelemetry();
+            
+            // Update previous gamepad states for next loop
+            prevGamepad1.copy(gamepad1);
+            prevGamepad2.copy(gamepad2);
+        }
+    }
+    
+    // ========== RUNAWAY ROBOT PREVENTION ==========
+    private boolean checkGamepadSafety() {
+        // Check if gamepads have changed (indicating active connection)
+        boolean gamepad1Changed = !gamepad1.equals(prevGamepad1);
+        boolean gamepad2Changed = !gamepad2.equals(prevGamepad2);
+        
+        if (gamepad1Changed || gamepad2Changed) {
+            lastInputTime.reset();
+            connectionWatchdog.reset();
+            if (emergencyStop) {
+                emergencyStop = false;
+                telemetry.addData("SAFETY", "Emergency stop cleared - input detected");
+                telemetry.update();
+            }
+        }
+        
+        // Check for input timeout (runaway prevention)
+        if (lastInputTime.seconds() > INPUT_TIMEOUT) {
+            emergencyStop = true;
+            drive.drive(0, 0, 0); // Stop all movement
+            decodeHelper.reset(); // Stop all shooting
+            telemetry.addData("SAFETY", "EMERGENCY STOP - No input for %.1f seconds", lastInputTime.seconds());
+            telemetry.addData("SAFETY", "Move any stick or press any button to resume");
+            telemetry.update();
+            return false;
+        }
+        
+        // Check connection health
+        if (connectionWatchdog.seconds() > CONNECTION_TIMEOUT) {
+            connectionWatchdog.reset();
+            // Additional connection health check could go here
+        }
+        
+        // Emergency stop override - both start buttons pressed
+        if (gamepad1.start && gamepad2.start) {
+            emergencyStop = true;
+            drive.drive(0, 0, 0);
+            decodeHelper.reset();
+            telemetry.addData("SAFETY", "MANUAL EMERGENCY STOP ACTIVATED");
+            telemetry.update();
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // ========== SEMI-AUTO ACTIONS ==========
+    private void handleSemiAutoActions() {
+        // Cancel any semi-auto with back button
+        if (gamepad1.back) {
+            cancelSemiAuto();
+            return;
+        }
+        
+        // Don't start new semi-auto if one is active or in emergency stop
+        if (semiAutoActive || emergencyStop) {
+            updateCurrentSemiAuto();
+            return;
+        }
+        
+        // Semi-auto: Move to basket and shoot (Y button)
+        if (gamepad1.y && !prevY1) {
+            startSemiAuto("MOVE_TO_BASKET_AND_SHOOT");
+        }
+        
+        // Semi-auto: Precision align to scoring position (B button)
+        if (gamepad1.b && !prevB1) {
+            startSemiAuto("PRECISION_ALIGN");
+        }
+        
+        // Semi-auto: Quick retreat (A button)
+        if (gamepad1.a && !prevA1) {
+            startSemiAuto("QUICK_RETREAT");
+        }
+        
+        // Semi-auto: Rotate to heading 0 (Right bumper)
+        if (gamepad1.right_bumper && !prevRightBumper1) {
+            startSemiAuto("ROTATE_TO_ZERO");
+        }
+        
+        // Semi-auto: Strafe to wall align (Left bumper)
+        if (gamepad1.left_bumper && !prevLeftBumper1) {
+            startSemiAuto("WALL_ALIGN");
+        }
+        
+        // Update button states
+        prevY1 = gamepad1.y;
+        prevB1 = gamepad1.b;
+        prevA1 = gamepad1.a;
+        prevRightBumper1 = gamepad1.right_bumper;
+        prevLeftBumper1 = gamepad1.left_bumper;
+    }
+    
+    private void startSemiAuto(String action) {
+        semiAutoActive = true;
+        currentSemiAuto = action;
+        semiAutoTimer.reset();
+        telemetry.addData("Semi-Auto", "Starting: " + action);
+        telemetry.update();
+    }
+    
+    private void cancelSemiAuto() {
+        if (semiAutoActive) {
+            semiAutoActive = false;
+            currentSemiAuto = "";
+            drive.drive(0, 0, 0); // Stop movement
+            telemetry.addData("Semi-Auto", "CANCELLED");
             telemetry.update();
         }
+    }
+    
+    private void updateCurrentSemiAuto() {
+        if (!semiAutoActive) return;
+        
+        double elapsed = semiAutoTimer.seconds();
+        boolean completed = false;
+        
+        switch (currentSemiAuto) {
+            case "MOVE_TO_BASKET_AND_SHOOT":
+                // Example: Move forward for 1 second, then shoot
+                if (elapsed < 1.0) {
+                    if (fieldRelativeMode) {
+                        drive.driveFieldRelative(0.5, 0, 0); // Move toward basket
+                    } else {
+                        drive.drive(0.5, 0, 0);
+                    }
+                } else if (elapsed < 2.0) {
+                    drive.drive(0, 0, 0); // Stop
+                    decodeHelper.handleShootButton(true); // Start shooting
+                } else if (elapsed < 4.0) {
+                    // Continue shooting for 2 seconds
+                    decodeHelper.handleShootButton(true);
+                } else {
+                    completed = true;
+                }
+                break;
+                
+            case "PRECISION_ALIGN":
+                // Slow precise movement for 2 seconds
+                if (elapsed < 2.0) {
+                    double forward = -gamepad1.right_stick_y * 0.3; // 30% speed
+                    double strafe = gamepad1.right_stick_x * 0.3;
+                    double rotate = gamepad1.left_stick_x * 0.3;
+                    drive.drive(forward, strafe, rotate);
+                } else {
+                    completed = true;
+                }
+                break;
+                
+            case "QUICK_RETREAT":
+                // Move backward quickly for 1 second
+                if (elapsed < 1.0) {
+                    if (fieldRelativeMode) {
+                        drive.driveFieldRelative(-0.8, 0, 0);
+                    } else {
+                        drive.drive(-0.8, 0, 0);
+                    }
+                } else {
+                    completed = true;
+                }
+                break;
+                
+            case "ROTATE_TO_ZERO":
+                // Simple rotation toward 0 degrees (approximate)
+                if (elapsed < 2.0) {
+                    drive.drive(0, 0, 0.5); // Rotate right
+                } else {
+                    completed = true;
+                }
+                break;
+                
+            case "WALL_ALIGN":
+                // Strafe left for wall alignment
+                if (elapsed < 1.5) {
+                    drive.drive(0, -0.6, 0);
+                } else {
+                    completed = true;
+                }
+                break;
+                
+            default:
+                completed = true;
+                break;
+        }
+        
+        if (completed) {
+            semiAutoActive = false;
+            currentSemiAuto = "";
+            drive.drive(0, 0, 0);
+            telemetry.addData("Semi-Auto", "COMPLETED");
+            telemetry.update();
+        }
+    }
+    
+    // ========== TELEMETRY ==========
+    private void updateTelemetry() {
+        telemetry.addData("Status", "Run Time: " + runtime.toString());
+        
+        // Safety status
+        if (emergencyStop) {
+            telemetry.addData("⚠️ EMERGENCY STOP", "ACTIVE - Move controller to resume");
+        } else {
+            telemetry.addData("✅ Safety", "Normal - %.1fs since last input", lastInputTime.seconds());
+        }
+        
+        // Semi-auto status
+        if (semiAutoActive) {
+            telemetry.addData("Quick-Auto", "%s (%.1fs)", currentSemiAuto, semiAutoTimer.seconds());
+        }
+        
+        telemetry.addData("Drive Mode", fieldRelativeMode ? "Field Relative" : "Robot Centric");
+        telemetry.addData("Front left/Right", "%4.2f, %4.2f", drive.leftFrontPower, drive.rightFrontPower);
+        telemetry.addData("Back  left/Right", "%4.2f, %4.2f", drive.leftBackPower, drive.rightBackPower);
+        telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
+        
+        telemetry.addData("", "--- DECODE SHOOTING ---");
+        decodeHelper.updateTelemetry();
+        
+        telemetry.addData("", "--- DRIVE CONTROLS ---");
+        telemetry.addData("Left Stick Button", "Toggle slow drive");
+        telemetry.addData("X", "Toggle field relative");
+        telemetry.addData("Start + Start", "Emergency stop");
+        
+        telemetry.addData("", "--- SEMI-AUTO CONTROLS ---");
+        telemetry.addData("Y", "Move to basket & shoot");
+        telemetry.addData("B", "Precision align mode");
+        telemetry.addData("A", "Quick retreat");
+        telemetry.addData("Right Bumper", "Rotate to 0°");
+        telemetry.addData("Left Bumper", "Wall align");
+        telemetry.addData("Back", "Cancel semi-auto");
+        
+        telemetry.addData("", "--- SHOOTING CONTROLS ---");
+        telemetry.addData("Gamepad2 A", "Smart shooting");
+        telemetry.addData("Gamepad2 RT", "Manual shooter");
+        telemetry.addData("Gamepad2 B", "Manual feed");
+        telemetry.addData("Gamepad2 X", "Stop shooting");
+        
+        telemetry.update();
     }
 }
 
