@@ -193,14 +193,28 @@ public class AdvancedPositioningHelper {
     private ElapsedTime lastAprilTagUpdate = new ElapsedTime();
     private double aprilTagConfidence = 0.0;
     
-    // Robot constants (adjust for your robot)
-    public static final double COUNTS_PER_MOTOR_REV = 537.7;
-    public static final double DRIVE_GEAR_REDUCTION = 1.0;
-    public static final double WHEEL_DIAMETER_INCHES = 4.0;
+    // Robot constants (based on your motor and wheel specifications)
+    // 
+    // DRIVE MOTOR SPECIFICATIONS:
+    // - Type: Brushed DC Motor with Planetary Gearbox
+    // - Gear Ratio: 13.7:1 (formula: (1+(46/17)) * (1+(46/17)))
+    // - Encoder Resolution: 384.5 PPR at output shaft (formula: 13.7 * 28 = 383.6, actual 384.5)
+    // - No-Load Speed: 435 RPM @ 12VDC
+    // - Stall Torque: 18.7 kg.cm (260 oz-in)
+    // - Encoder Type: Relative Quadrature, Magnetic (Hall Effect)
+    // 
+    // WHEEL SPECIFICATIONS:
+    // - Diameter: 104mm (4.094 inches)
+    // 
+    // NOTE: These constants are for DRIVE MOTOR odometry (fallback positioning).
+    // Dead wheel odometry uses separate encoders with different specifications (see DeadWheelOdometry.java)
+    public static final double COUNTS_PER_MOTOR_REV = 384.5;  // PPR at output shaft with 13.7:1 gearbox
+    public static final double DRIVE_GEAR_REDUCTION = 1.0;    // No additional gearing (direct drive)
+    public static final double WHEEL_DIAMETER_INCHES = 4.094; // 104mm = 4.094 inches
     public static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
                                                   (WHEEL_DIAMETER_INCHES * Math.PI);
-    public static final double ROBOT_WIDTH = 18.0;   // Distance between left and right wheels
-    public static final double ROBOT_LENGTH = 18.0;  // Distance between front and back wheels
+    public static final double ROBOT_WIDTH = 18.0;   // Distance between left and right wheels (measure your robot)
+    public static final double ROBOT_LENGTH = 18.0;  // Distance between front and back wheels (measure your robot)
     
     // DECODE Field constants (measured field dimensions)
     public static final double FIELD_WIDTH = 141.0;        // 3580mm = ~141" inside perimeter walls
