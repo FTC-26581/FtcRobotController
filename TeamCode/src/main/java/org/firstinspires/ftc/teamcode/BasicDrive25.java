@@ -435,11 +435,7 @@ public class BasicDrive25 extends LinearOpMode {
     }
     
     private boolean hasButtonChanged(Gamepad current, Gamepad previous) {
-        return current.a != previous.a ||
-               current.b != previous.b ||
-               current.x != previous.x ||
-               current.y != previous.y ||
-               current.left_bumper != previous.left_bumper ||
+        return current.left_bumper != previous.left_bumper ||
                current.right_bumper != previous.right_bumper ||
                current.left_stick_button != previous.left_stick_button ||
                current.right_stick_button != previous.right_stick_button ||

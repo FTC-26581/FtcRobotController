@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.util.AutoHelper;
 
 /**
  * DecodeHelper - A utility class for DECODE season artifact launching
@@ -170,7 +171,8 @@ public class DecodeHelper {
         
         // Fire shots while button is held and shooter is ready
         if (buttonPressed && shooterRunning) {
-            shotFired = fireSingleShot();
+            fireSingleShot();
+            shotFired = true;
         }
         
         prevButtonState = buttonPressed;
