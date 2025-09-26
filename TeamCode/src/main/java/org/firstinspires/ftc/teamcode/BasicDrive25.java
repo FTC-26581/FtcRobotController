@@ -37,7 +37,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.MechanumFieldRelative;
 import org.firstinspires.ftc.teamcode.util.DecodeHelper;
 
-@TeleOp(name="BasicDrive25 Enhanced", group="Linear OpMode")
+@TeleOp(name="StarterBotV2.0", group="Linear OpMode")
 public class BasicDrive25 extends LinearOpMode {
 
     private final ElapsedTime runtime = new ElapsedTime();
@@ -101,16 +101,12 @@ public class BasicDrive25 extends LinearOpMode {
             // Toggle slow drive
             if (gamepad1.left_stick_button && !prevSlowToggle) {
                 drive.toggleSlowDrive();
-                telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
-                telemetry.update();
             }
             prevSlowToggle = gamepad1.left_stick_button;
 
             // Toggle field-relative/normal mode with X button
             if (gamepad1.x && !prevModeToggle) {
                 fieldRelativeMode = !fieldRelativeMode;
-                telemetry.addData("Drive Mode", fieldRelativeMode ? "Field Relative" : "Robot Centric");
-                telemetry.update();
             }
             prevModeToggle = gamepad1.x;
 
@@ -119,23 +115,28 @@ public class BasicDrive25 extends LinearOpMode {
             
             // ========== DRIVE CONTROLS ==========
             if (!semiAutoActive && !emergencyStop) {
-                // Get joystick values
-                double forward = -gamepad1.right_stick_y;
-                double strafe = gamepad1.right_stick_x;
-                double rotate = gamepad1.left_stick_x;
-
                 if (gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right) {
                     // Use dpad for movement
                     drive.dpadMove();
                 } else {
+                    // Get joystick values only when needed
+                    double forward = -gamepad1.right_stick_y;
+                    double strafe = gamepad1.right_stick_x;
+                    double rotate = gamepad1.left_stick_x;
+                    
+                    // Apply deadzone to prevent drift (efficiency improvement)
+                    if (Math.abs(forward) < 0.05) forward = 0;
+                    if (Math.abs(strafe) < 0.05) strafe = 0;
+                    if (Math.abs(rotate) < 0.05) rotate = 0;
+                    
                     if (fieldRelativeMode) {
                         drive.driveFieldRelative(forward, strafe, rotate);
                     } else {
                         drive.drive(forward, strafe, rotate);
                     }
                 }
-            } else if (emergencyStop || semiAutoActive) {
-                // Stop all movement during emergency stop or semi-auto
+            } else {
+                // Stop all movement during emergency stop or semi-auto (simplified condition)
                 drive.drive(0, 0, 0);
             }
 
@@ -161,10 +162,8 @@ public class BasicDrive25 extends LinearOpMode {
                 if (gamepad2.x) {
                     decodeHelper.reset();
                 }
-            } else {
-                // Emergency stop - shut down all shooting
-                decodeHelper.reset();
             }
+            // Note: DecodeHelper.reset() is called in checkGamepadSafety() when emergencyStop = true
 
             // ========== TELEMETRY ==========
             updateTelemetry();
@@ -178,16 +177,15 @@ public class BasicDrive25 extends LinearOpMode {
     // ========== RUNAWAY ROBOT PREVENTION ==========
     private boolean checkGamepadSafety() {
         // Check if gamepads have changed (indicating active connection)
-        boolean gamepad1Changed = !gamepad1.equals(prevGamepad1);
-        boolean gamepad2Changed = !gamepad2.equals(prevGamepad2);
+        // Use more reliable input detection instead of equals()
+        boolean gamepad1Changed = hasSignificantInput(gamepad1) || hasButtonChanged(gamepad1, prevGamepad1);
+        boolean gamepad2Changed = hasSignificantInput(gamepad2) || hasButtonChanged(gamepad2, prevGamepad2);
         
         if (gamepad1Changed || gamepad2Changed) {
             lastInputTime.reset();
             connectionWatchdog.reset();
             if (emergencyStop) {
                 emergencyStop = false;
-                telemetry.addData("SAFETY", "Emergency stop cleared - input detected");
-                telemetry.update();
             }
         }
         
@@ -223,49 +221,57 @@ public class BasicDrive25 extends LinearOpMode {
     
     // ========== SEMI-AUTO ACTIONS ==========
     private void handleSemiAutoActions() {
+        // Update button states first to prevent conflicts
+        boolean currentY1 = gamepad1.y;
+        boolean currentB1 = gamepad1.b;
+        boolean currentA1 = gamepad1.a;
+        boolean currentRightBumper1 = gamepad1.right_bumper;
+        boolean currentLeftBumper1 = gamepad1.left_bumper;
+        
         // Cancel any semi-auto with back button
         if (gamepad1.back) {
             cancelSemiAuto();
-            return;
+        }
+        
+        // Update current semi-auto if one is active
+        if (semiAutoActive) {
+            updateCurrentSemiAuto();
         }
         
         // Don't start new semi-auto if one is active or in emergency stop
-        if (semiAutoActive || emergencyStop) {
-            updateCurrentSemiAuto();
-            return;
+        if (!semiAutoActive && !emergencyStop) {
+            // Semi-auto: Move to basket and shoot (Y button)
+            if (currentY1 && !prevY1) {
+                startSemiAuto("MOVE_TO_BASKET_AND_SHOOT");
+            }
+            
+            // Semi-auto: Precision align to scoring position (B button)
+            if (currentB1 && !prevB1) {
+                startSemiAuto("PRECISION_ALIGN");
+            }
+            
+            // Semi-auto: Quick retreat (A button)
+            if (currentA1 && !prevA1) {
+                startSemiAuto("QUICK_RETREAT");
+            }
+            
+            // Semi-auto: Rotate to heading 0 (Right bumper)
+            if (currentRightBumper1 && !prevRightBumper1) {
+                startSemiAuto("ROTATE_TO_ZERO");
+            }
+            
+            // Semi-auto: Strafe to wall align (Left bumper)
+            if (currentLeftBumper1 && !prevLeftBumper1) {
+                startSemiAuto("WALL_ALIGN");
+            }
         }
         
-        // Semi-auto: Move to basket and shoot (Y button)
-        if (gamepad1.y && !prevY1) {
-            startSemiAuto("MOVE_TO_BASKET_AND_SHOOT");
-        }
-        
-        // Semi-auto: Precision align to scoring position (B button)
-        if (gamepad1.b && !prevB1) {
-            startSemiAuto("PRECISION_ALIGN");
-        }
-        
-        // Semi-auto: Quick retreat (A button)
-        if (gamepad1.a && !prevA1) {
-            startSemiAuto("QUICK_RETREAT");
-        }
-        
-        // Semi-auto: Rotate to heading 0 (Right bumper)
-        if (gamepad1.right_bumper && !prevRightBumper1) {
-            startSemiAuto("ROTATE_TO_ZERO");
-        }
-        
-        // Semi-auto: Strafe to wall align (Left bumper)
-        if (gamepad1.left_bumper && !prevLeftBumper1) {
-            startSemiAuto("WALL_ALIGN");
-        }
-        
-        // Update button states
-        prevY1 = gamepad1.y;
-        prevB1 = gamepad1.b;
-        prevA1 = gamepad1.a;
-        prevRightBumper1 = gamepad1.right_bumper;
-        prevLeftBumper1 = gamepad1.left_bumper;
+        // Update button states for next loop
+        prevY1 = currentY1;
+        prevB1 = currentB1;
+        prevA1 = currentA1;
+        prevRightBumper1 = currentRightBumper1;
+        prevLeftBumper1 = currentLeftBumper1;
     }
     
     private void startSemiAuto(String action) {
@@ -413,6 +419,36 @@ public class BasicDrive25 extends LinearOpMode {
         telemetry.addData("Gamepad2 X", "Stop shooting");
         
         telemetry.update();
+    }
+    
+    // ========== HELPER METHODS FOR SAFETY ==========
+    private boolean hasSignificantInput(Gamepad gamepad) {
+        final double STICK_THRESHOLD = 0.1;
+        final double TRIGGER_THRESHOLD = 0.1;
+        
+        return Math.abs(gamepad.left_stick_x) > STICK_THRESHOLD ||
+               Math.abs(gamepad.left_stick_y) > STICK_THRESHOLD ||
+               Math.abs(gamepad.right_stick_x) > STICK_THRESHOLD ||
+               Math.abs(gamepad.right_stick_y) > STICK_THRESHOLD ||
+               gamepad.left_trigger > TRIGGER_THRESHOLD ||
+               gamepad.right_trigger > TRIGGER_THRESHOLD;
+    }
+    
+    private boolean hasButtonChanged(Gamepad current, Gamepad previous) {
+        return current.a != previous.a ||
+               current.b != previous.b ||
+               current.x != previous.x ||
+               current.y != previous.y ||
+               current.left_bumper != previous.left_bumper ||
+               current.right_bumper != previous.right_bumper ||
+               current.left_stick_button != previous.left_stick_button ||
+               current.right_stick_button != previous.right_stick_button ||
+               current.dpad_up != previous.dpad_up ||
+               current.dpad_down != previous.dpad_down ||
+               current.dpad_left != previous.dpad_left ||
+               current.dpad_right != previous.dpad_right ||
+               current.start != previous.start ||
+               current.back != previous.back;
     }
 }
 
