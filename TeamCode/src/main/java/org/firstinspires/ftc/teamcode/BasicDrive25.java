@@ -90,8 +90,8 @@ public class BasicDrive25 extends LinearOpMode {
             prevModeToggle = gamepad1.x;
 
             // Get joystick values
-            double forward = gamepad1.right_stick_y;
-            double strafe = -gamepad1.right_stick_x;
+            double forward = -gamepad1.right_stick_y;
+            double strafe = gamepad1.right_stick_x;
             double rotate = gamepad1.left_stick_x;
 
             if (gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right) {
@@ -115,17 +115,19 @@ public class BasicDrive25 extends LinearOpMode {
 
             if(gamepad2.triangle){
                 shooterState = !shooterState;
-                shooter.setPower(shooterState ? 0.6 : 0.0);
+                shooter.setPower(shooterState ? 0.65 : 0.0);
                 waitWhile(0.5);
             }
             if(!shooterState){
-                shooter.setPower(gamepad2.right_trigger * 0.8);
+                shooter.setPower(gamepad2.right_trigger * 1.0);
             }
 
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Drive Mode", fieldRelativeMode ? "Field Relative" : "Robot Centric");
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", drive.leftFrontPower, drive.rightFrontPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", drive.leftBackPower, drive.rightBackPower);
+            telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
+            telemetry.addData("Shooter Power", shooter.getPower());
             telemetry.update();
         }
     }
