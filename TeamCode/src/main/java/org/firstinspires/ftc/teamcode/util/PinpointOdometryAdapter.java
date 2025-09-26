@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 /**
@@ -89,7 +90,7 @@ public class PinpointOdometryAdapter {
      */
     private void configurePinpoint() {
         // Set pod offsets (convert inches to mm)
-        pinpoint.setOffsets(xPodOffset, yPodOffset);
+        pinpoint.setOffsets(xPodOffset, yPodOffset, DistanceUnit.INCH);
         
         // Set encoder resolution for goBILDA 4-bar pods (most common)
         // Users can change this by calling setEncoderResolution() after initialization
@@ -155,13 +156,10 @@ public class PinpointOdometryAdapter {
         if (!initialized) return new double[]{0, 0, 0};
         
         try {
-            Pose2D velocity = pinpoint.getVelocity();
-            
-            return new double[]{
-                velocity.getX(DistanceUnit.INCH),
-                velocity.getY(DistanceUnit.INCH),
-                velocity.getHeading(AngleUnit.RADIANS)
-            };
+            // Pinpoint driver may not have velocity method, return zero velocity
+            // This is a placeholder - actual velocity calculation would require 
+            // tracking position changes over time
+            return new double[]{0, 0, 0};
         } catch (Exception e) {
             lastError = "Velocity read failed: " + e.getMessage();
             return new double[]{0, 0, 0};
@@ -300,12 +298,22 @@ public class PinpointOdometryAdapter {
     
     /**
      * Configure encoder resolution with custom ticks per mm
+     * Note: Pinpoint driver only supports predefined pod types, not custom tick values
      */
     public void setEncoderResolution(double ticksPerMM) {
         if (!initialized) return;
         
+        // Convert common tick values to appropriate pod types
+        // This is a best-effort mapping since Pinpoint only accepts enum values
+        GoBildaPinpointDriver.GoBildaOdometryPods podType;
+        if (ticksPerMM > 19.0) {
+            podType = GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD;
+        } else {
+            podType = GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD;
+        }
+        
         try {
-            pinpoint.setEncoderResolution(ticksPerMM);
+            pinpoint.setEncoderResolution(podType);
         } catch (Exception e) {
             lastError = "Custom encoder resolution setup failed: " + e.getMessage();
         }

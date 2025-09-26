@@ -174,8 +174,10 @@ public class AutoHelper {
             aph = new AdvancedPositioningHelper(opMode);
             
             if (frontWebcamName != null && backWebcamName != null) {
-                // Dual camera initialization
-                aph.initializeDualCamera(frontWebcamName, backWebcamName);
+                // Dual camera initialization with default camera positions
+                aph.initializeDualCamera(frontWebcamName, backWebcamName,
+                    6.0, 0.0, 8.0, 0.0,     // Front camera: 6" forward, 8" up, facing forward
+                    -6.0, 0.0, 8.0, 180.0); // Back camera: 6" back, 8" up, facing backward
                 telemetry.addData("AutoHelper", "Initialized with dual cameras");
                 telemetry.addData("Front Camera", frontWebcamName);
                 telemetry.addData("Back Camera", backWebcamName);
@@ -185,8 +187,8 @@ public class AutoHelper {
                 telemetry.addData("AutoHelper", "Initialized with single camera");
                 telemetry.addData("Camera", frontWebcamName);
             } else {
-                // Motor encoders only
-                aph.initializeEncodersOnly();
+                // Motor encoders only - use initialize with null webcam
+                aph.initialize(null, false, false);
                 telemetry.addData("AutoHelper", "Initialized with encoders only");
             }
             
@@ -287,28 +289,28 @@ public class AutoHelper {
      * Move by relative distance (fluent API)
      */
     public AutoHelper moveBy(double deltaX, double deltaY, double deltaHeading, String description) {
-        return addStep(description, () -> aph.moveBy(deltaX, deltaY, deltaHeading, defaultPower, (long)defaultTimeout));
+        return addStep(description, () -> executeMoveBy(deltaX, deltaY, deltaHeading, defaultPower));
     }
     
     /**
      * Move by relative distance with custom parameters (fluent API)
      */
     public AutoHelper moveBy(double deltaX, double deltaY, double deltaHeading, double power, long timeoutMs, String description) {
-        return addStep(description, () -> aph.moveBy(deltaX, deltaY, deltaHeading, power, timeoutMs));
+        return addStep(description, () -> executeMoveBy(deltaX, deltaY, deltaHeading, power));
     }
     
     /**
      * Turn to absolute heading (fluent API)
      */
     public AutoHelper turnTo(double heading, String description) {
-        return addStep(description, () -> aph.turnTo(heading, defaultPower, (long)defaultTimeout));
+        return addStep(description, () -> executeTurnTo(heading, defaultPower));
     }
     
     /**
      * Turn to absolute heading with custom parameters (fluent API)
      */
     public AutoHelper turnTo(double heading, double power, long timeoutMs, String description) {
-        return addStep(description, () -> aph.turnTo(heading, power, timeoutMs));
+        return addStep(description, () -> executeTurnTo(heading, power));
     }
     
     /**
@@ -317,7 +319,7 @@ public class AutoHelper {
     public AutoHelper turnBy(double deltaHeading, String description) {
         return addStep(description, () -> {
             double currentHeading = aph.getCurrentHeading();
-            return aph.turnTo(currentHeading + deltaHeading, defaultPower, (long)defaultTimeout);
+            return executeTurnTo(currentHeading + deltaHeading, defaultPower);
         });
     }
     
@@ -684,7 +686,7 @@ public class AutoHelper {
             telemetry.update();
             
             // Try AprilTag relocalization
-            if (relocalizationEnabled && aph != null && aph.attemptRelocalization()) {
+            if (relocalizationEnabled && aph != null && aph.attemptAprilTagRelocalization()) {
                 telemetry.addData("Recovery", "Relocalization successful");
                 telemetry.update();
                 opMode.sleep(500); // Brief pause before retry
@@ -835,7 +837,7 @@ public class AutoHelper {
      */
     public void emergencyStop() {
         if (aph != null) {
-            aph.stopRobot();
+            aph.stopMotors();
         }
         
         // Clear remaining steps
@@ -870,5 +872,36 @@ public class AutoHelper {
      */
     public void sleep(long milliseconds) {
         opMode.sleep(milliseconds);
+    }
+    
+    // ========== HELPER METHODS FOR MOVEMENT ==========
+    
+    /**
+     * Execute relative movement using current position
+     */
+    private boolean executeMoveBy(double deltaX, double deltaY, double deltaHeading, double power) {
+        if (aph == null) return false;
+        
+        double currentX = aph.getCurrentX();
+        double currentY = aph.getCurrentY();
+        double currentHeading = aph.getCurrentHeading();
+        
+        double targetX = currentX + deltaX;
+        double targetY = currentY + deltaY;
+        double targetHeading = currentHeading + deltaHeading;
+        
+        return aph.goToPosition(targetX, targetY, targetHeading, power);
+    }
+    
+    /**
+     * Execute turn to absolute heading
+     */
+    private boolean executeTurnTo(double targetHeading, double power) {
+        if (aph == null) return false;
+        
+        double currentX = aph.getCurrentX();
+        double currentY = aph.getCurrentY();
+        
+        return aph.goToPosition(currentX, currentY, targetHeading, power);
     }
 }

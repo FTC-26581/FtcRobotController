@@ -453,8 +453,8 @@ public class DecodeHelper {
      * @param description Description for telemetry
      * @return The same AutoHelper instance for chaining
      */
-    public org.firstinspires.ftc.teamcode.util.AutoHelper addShootingSequence(
-            org.firstinspires.ftc.teamcode.util.AutoHelper autoHelper, 
+    public AutoHelper addShootingSequence(
+            AutoHelper autoHelper, 
             int numShots, 
             String description) {
         return autoHelper.addStep(description, createShootAction(numShots, false));
@@ -466,8 +466,8 @@ public class DecodeHelper {
      * @param description Description for telemetry
      * @return The same AutoHelper instance for chaining
      */
-    public org.firstinspires.ftc.teamcode.util.AutoHelper addStartShooterStep(
-            org.firstinspires.ftc.teamcode.util.AutoHelper autoHelper, 
+    public AutoHelper addStartShooterStep(
+            AutoHelper autoHelper, 
             String description) {
         return autoHelper.addStep(description, createStartShooterAction());
     }
@@ -478,8 +478,8 @@ public class DecodeHelper {
      * @param description Description for telemetry
      * @return The same AutoHelper instance for chaining
      */
-    public org.firstinspires.ftc.teamcode.util.AutoHelper addStopShooterStep(
-            org.firstinspires.ftc.teamcode.util.AutoHelper autoHelper, 
+    public AutoHelper addStopShooterStep(
+            AutoHelper autoHelper, 
             String description) {
         return autoHelper.addStep(description, createStopShooterAction());
     }
@@ -490,8 +490,8 @@ public class DecodeHelper {
      * @param description Description for telemetry
      * @return The same AutoHelper instance for chaining
      */
-    public org.firstinspires.ftc.teamcode.util.AutoHelper addWaitForShooterReadyStep(
-            org.firstinspires.ftc.teamcode.util.AutoHelper autoHelper, 
+    public AutoHelper addWaitForShooterReadyStep(
+            AutoHelper autoHelper, 
             String description) {
         return autoHelper.addStep(description, createWaitForShooterReadyAction());
     }

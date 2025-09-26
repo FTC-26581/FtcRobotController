@@ -12,6 +12,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.MechanumDrive;
 import org.firstinspires.ftc.teamcode.util.AprilTagMultiTool;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
@@ -1452,7 +1453,7 @@ public class AdvancedPositioningHelper {
      */
     public String getOdometryStatus() {
         if (isUsingDeadWheels()) {
-            return "Dead Wheels: " + deadWheelOdometry.getStatus();
+            return "Dead Wheels: " + deadWheelOdometry.getSystemStatus();
         } else {
             return "Motor Encoders: Active";
         }
@@ -1521,7 +1522,7 @@ public class AdvancedPositioningHelper {
         telemetry.addData("Odometry", getOdometryStatus());
         
         if (isUsingDeadWheels()) {
-            telemetry.addData("Dead Wheel Status", deadWheelOdometry.getStatus());
+            telemetry.addData("Dead Wheel Status", deadWheelOdometry.getSystemStatus());
         } else {
             telemetry.addData("Motor Encoders", "LF:%d RF:%d LB:%d RB:%d",
                     leftFrontDrive.getCurrentPosition(),
@@ -1579,7 +1580,7 @@ public class AdvancedPositioningHelper {
     public static double getDistanceFromRedAlliance(double x, double y) {
         // Red Alliance is at negative Y values (left side from audience in DECODE)
         double redAllianceX = 0.0; // Center of field in X direction
-        double redAllianceY = RED_ALLIANCE_Y; // Near Red Wall (left side)
+        double redAllianceY = RED_WALL_Y; // Near Red Wall (left side)
         return Math.sqrt(Math.pow(x - redAllianceX, 2) + Math.pow(y - redAllianceY, 2));
     }
     
@@ -1978,5 +1979,21 @@ public class AdvancedPositioningHelper {
      */
     public boolean isUsingMechanumDriveClass() {
         return mechanumDrive != null;
+    }
+    
+    /**
+     * Get formatted position string for display
+     */
+    public String getFormattedPosition() {
+        return String.format("(%.1f, %.1f, %.0f°)", getCurrentX(), getCurrentY(), getCurrentHeading());
+    }
+    
+    /**
+     * Get distance to a target position
+     */
+    public double getDistanceToPosition(double targetX, double targetY) {
+        double deltaX = targetX - getCurrentX();
+        double deltaY = targetY - getCurrentY();
+        return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     }
 }
