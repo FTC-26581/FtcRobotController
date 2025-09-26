@@ -1,8 +1,11 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.samples.autonomous;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.teamcode.util.AdvancedPositioningHelper;
+import org.firstinspires.ftc.teamcode.util.DeadWheelOdometry;
 
 /**
  * DeadWheelOdometryDemo - Demonstration of Dead Wheel Odometry System

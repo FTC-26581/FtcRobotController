@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.util;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -102,11 +102,21 @@ public class AutoHelper {
     private double defaultTimeout = 5000; // 5 seconds
     private double stuckThreshold = 2.0; // inches
     private double stuckTimeThreshold = 2000; // 2 seconds
+    private MovementTraversalMode defaultTraversalMode = MovementTraversalMode.DIRECT_VECTOR;
     
     // Execution state
     private boolean allStepsCompleted = false;
     private boolean executionFailed = false;
     private String lastErrorMessage = "";
+    
+    // Movement traversal modes
+    public enum MovementTraversalMode {
+        DIRECT_VECTOR,    // Straight line to target (current APH behavior)
+        X_THEN_Y,        // Move X first, then Y, then rotate
+        Y_THEN_X,        // Move Y first, then X, then rotate
+        MANHATTAN_AUTO,   // Choose X or Y first based on which is larger distance
+        SEPARATE_PHASES   // X, Y, and rotation as completely separate phases
+    }
     
     // Inner class for step management
     public static class AutoStep {
@@ -234,20 +244,43 @@ public class AutoHelper {
         return this;
     }
     
+    /**
+     * Set default movement traversal mode
+     * @param mode How the robot should traverse to target positions
+     */
+    public AutoHelper setDefaultTraversalMode(MovementTraversalMode mode) {
+        this.defaultTraversalMode = mode;
+        return this;
+    }
+    
     // ========== FLUENT API MOVEMENT METHODS ==========
     
     /**
-     * Move to absolute field position (fluent API)
+     * Move to absolute field position using default traversal mode (fluent API)
      */
     public AutoHelper moveTo(double x, double y, double heading, String description) {
-        return addStep(description, () -> aph.moveTo(x, y, heading, defaultPower, (long)defaultTimeout));
+        return moveTo(x, y, heading, defaultPower, (long)defaultTimeout, defaultTraversalMode, description);
     }
     
     /**
      * Move to absolute field position with custom parameters (fluent API)
      */
     public AutoHelper moveTo(double x, double y, double heading, double power, long timeoutMs, String description) {
-        return addStep(description, () -> aph.moveTo(x, y, heading, power, timeoutMs));
+        return moveTo(x, y, heading, power, timeoutMs, defaultTraversalMode, description);
+    }
+    
+    /**
+     * Move to absolute field position with specific traversal mode (fluent API)
+     */
+    public AutoHelper moveTo(double x, double y, double heading, MovementTraversalMode traversalMode, String description) {
+        return moveTo(x, y, heading, defaultPower, (long)defaultTimeout, traversalMode, description);
+    }
+    
+    /**
+     * Move to absolute field position with full control (fluent API)
+     */
+    public AutoHelper moveTo(double x, double y, double heading, double power, long timeoutMs, MovementTraversalMode traversalMode, String description) {
+        return addStep(description, () -> executeMoveTo(x, y, heading, power, timeoutMs, traversalMode));
     }
     
     /**
@@ -350,6 +383,179 @@ public class AutoHelper {
         allStepsCompleted = false;
         executionFailed = false;
         return this;
+    }
+    
+    // ========== MOVEMENT EXECUTION METHODS ==========
+    
+    /**
+     * Execute movement to target position using specified traversal mode
+     */
+    private boolean executeMoveTo(double targetX, double targetY, double targetHeading, double power, long timeoutMs, MovementTraversalMode traversalMode) {
+        if (aph == null) {
+            telemetry.addData("ERROR", "APH not initialized");
+            return false;
+        }
+        
+        switch (traversalMode) {
+            case DIRECT_VECTOR:
+                // Use existing APH method for direct vector movement
+                return aph.goToPosition(targetX, targetY, targetHeading, power);
+                
+            case X_THEN_Y:
+                return executeManhattanMovement(targetX, targetY, targetHeading, power, timeoutMs, true);
+                
+            case Y_THEN_X:
+                return executeManhattanMovement(targetX, targetY, targetHeading, power, timeoutMs, false);
+                
+            case MANHATTAN_AUTO:
+                return executeManhattanMovementAuto(targetX, targetY, targetHeading, power, timeoutMs);
+                
+            case SEPARATE_PHASES:
+                return executeSeparatePhaseMovement(targetX, targetY, targetHeading, power, timeoutMs);
+                
+            default:
+                return aph.goToPosition(targetX, targetY, targetHeading, power);
+        }
+    }
+    
+    /**
+     * Execute Manhattan (L-shaped) movement
+     * @param xFirst true to move X first, false to move Y first
+     */
+    private boolean executeManhattanMovement(double targetX, double targetY, double targetHeading, double power, long timeoutMs, boolean xFirst) {
+        ElapsedTime totalTimer = new ElapsedTime();
+        double currentX = aph.getCurrentX();
+        double currentY = aph.getCurrentY();
+        double currentHeading = aph.getCurrentHeading();
+        
+        double phaseTimeout = timeoutMs / 3.0; // Divide time between X, Y, and rotation phases
+        
+        if (xFirst) {
+            // Phase 1: Move X only
+            if (Math.abs(targetX - currentX) > 1.0) { // 1 inch tolerance
+                if (!aph.goToPosition(targetX, currentY, currentHeading, power)) {
+                    if (totalTimer.milliseconds() > phaseTimeout) return false;
+                }
+            }
+            
+            // Phase 2: Move Y only
+            if (Math.abs(targetY - aph.getCurrentY()) > 1.0) {
+                if (!aph.goToPosition(targetX, targetY, currentHeading, power)) {
+                    if (totalTimer.milliseconds() > phaseTimeout * 2) return false;
+                }
+            }
+        } else {
+            // Phase 1: Move Y only
+            if (Math.abs(targetY - currentY) > 1.0) {
+                if (!aph.goToPosition(currentX, targetY, currentHeading, power)) {
+                    if (totalTimer.milliseconds() > phaseTimeout) return false;
+                }
+            }
+            
+            // Phase 2: Move X only
+            if (Math.abs(targetX - aph.getCurrentX()) > 1.0) {
+                if (!aph.goToPosition(targetX, targetY, currentHeading, power)) {
+                    if (totalTimer.milliseconds() > phaseTimeout * 2) return false;
+                }
+            }
+        }
+        
+        // Phase 3: Rotate to final heading
+        if (Math.abs(targetHeading - aph.getCurrentHeading()) > 2.0) { // 2 degree tolerance
+            if (!aph.rotateToHeading(targetHeading, power)) {
+                if (totalTimer.milliseconds() > timeoutMs) return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Execute Manhattan movement, automatically choosing X or Y first based on larger distance
+     */
+    private boolean executeManhattanMovementAuto(double targetX, double targetY, double targetHeading, double power, long timeoutMs) {
+        double currentX = aph.getCurrentX();
+        double currentY = aph.getCurrentY();
+        
+        double deltaX = Math.abs(targetX - currentX);
+        double deltaY = Math.abs(targetY - currentY);
+        
+        // Move along the axis with the larger distance first
+        boolean xFirst = deltaX >= deltaY;
+        
+        if (debugTelemetryEnabled) {
+            telemetry.addData("Manhattan Auto", "Moving %s first (%.1f\" vs %.1f\")", 
+                xFirst ? "X" : "Y", deltaX, deltaY);
+        }
+        
+        return executeManhattanMovement(targetX, targetY, targetHeading, power, timeoutMs, xFirst);
+    }
+    
+    /**
+     * Execute movement as completely separate phases: X, then Y, then rotation
+     */
+    private boolean executeSeparatePhaseMovement(double targetX, double targetY, double targetHeading, double power, long timeoutMs) {
+        ElapsedTime totalTimer = new ElapsedTime();
+        double phaseTimeout = timeoutMs / 3.0;
+        
+        double currentX = aph.getCurrentX();
+        double currentY = aph.getCurrentY();
+        double currentHeading = aph.getCurrentHeading();
+        
+        // Phase 1: X movement only (strafe)
+        if (Math.abs(targetX - currentX) > 1.0) {
+            ElapsedTime phaseTimer = new ElapsedTime();
+            while (opMode.opModeIsActive() && Math.abs(targetX - aph.getCurrentX()) > 1.0) {
+                if (phaseTimer.milliseconds() > phaseTimeout) {
+                    if (debugTelemetryEnabled) {
+                        telemetry.addData("Phase 1", "X movement timeout");
+                    }
+                    return false;
+                }
+                
+                // Pure strafe movement
+                double error = targetX - aph.getCurrentX();
+                double strafePower = Math.max(0.2, Math.min(power, Math.abs(error) * 0.1));
+                if (error < 0) strafePower = -strafePower;
+                
+                aph.setDrivePowers(0, strafePower, 0); // Forward=0, Strafe=power, Rotate=0
+                aph.updatePosition();
+                opMode.sleep(20);
+            }
+            aph.stopMotors();
+        }
+        
+        // Phase 2: Y movement only (forward/backward)
+        if (Math.abs(targetY - aph.getCurrentY()) > 1.0) {
+            ElapsedTime phaseTimer = new ElapsedTime();
+            while (opMode.opModeIsActive() && Math.abs(targetY - aph.getCurrentY()) > 1.0) {
+                if (phaseTimer.milliseconds() > phaseTimeout) {
+                    if (debugTelemetryEnabled) {
+                        telemetry.addData("Phase 2", "Y movement timeout");
+                    }
+                    return false;
+                }
+                
+                // Pure forward/backward movement
+                double error = targetY - aph.getCurrentY();
+                double forwardPower = Math.max(0.2, Math.min(power, Math.abs(error) * 0.1));
+                if (error < 0) forwardPower = -forwardPower;
+                
+                aph.setDrivePowers(forwardPower, 0, 0); // Forward=power, Strafe=0, Rotate=0
+                aph.updatePosition();
+                opMode.sleep(20);
+            }
+            aph.stopMotors();
+        }
+        
+        // Phase 3: Rotation only
+        if (Math.abs(targetHeading - aph.getCurrentHeading()) > 2.0) {
+            if (!aph.rotateToHeading(targetHeading, power)) {
+                if (totalTimer.milliseconds() > timeoutMs) return false;
+            }
+        }
+        
+        return true;
     }
     
     // ========== EXECUTION METHODS ==========
