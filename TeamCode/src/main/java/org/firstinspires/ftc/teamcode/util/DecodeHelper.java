@@ -36,8 +36,8 @@ public class DecodeHelper {
     // Configuration constants
     private static final double SHOOTER_POWER = 0.65;
     private static final double FEED_POWER = 1.0;
-    private static final double FEED_TIME = 0.3; // Time to run feed servos for one shot
-    private static final double SHOT_INTERVAL = 0.5; // Minimum time between shots
+    private static final double FEED_TIME = 1.0; // Time to run feed servos for one shot
+    private static final double SHOT_INTERVAL = 1.0; // Minimum time between shots
     private static final double SHOOTER_SPINUP_TIME = 1.0; // Time for shooter to reach speed
     
     // State variables
@@ -117,7 +117,7 @@ public class DecodeHelper {
      * @return true if shooter has been running long enough to be at speed
      */
     public boolean isShooterReady() {
-        return shooterRunning && (timer.seconds() - (timer.seconds() - lastShotTime) >= SHOOTER_SPINUP_TIME);
+        return shooterRunning && (timer.seconds() >= SHOOTER_SPINUP_TIME) && (timer.seconds() - lastShotTime >= SHOT_INTERVAL);
     }
     
     /**
@@ -286,7 +286,11 @@ public class DecodeHelper {
      * @return seconds since last shot was fired
      */
     public double getTimeSinceLastShot() {
-        return timer.seconds() - lastShotTime;
+        if(lastShotTime>timer.seconds()){
+            return 0;//to prevent negative return.
+        }else{
+            return timer.seconds() - lastShotTime;
+        }
     }
     
     /**

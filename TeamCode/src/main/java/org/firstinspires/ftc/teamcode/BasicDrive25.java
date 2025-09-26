@@ -395,10 +395,11 @@ public class BasicDrive25 extends LinearOpMode {
         telemetry.addData("Front left/Right", "%4.2f, %4.2f", drive.leftFrontPower, drive.rightFrontPower);
         telemetry.addData("Back  left/Right", "%4.2f, %4.2f", drive.leftBackPower, drive.rightBackPower);
         telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
+
         
         telemetry.addData("", "--- DECODE SHOOTING ---");
         decodeHelper.updateTelemetry();
-        
+        /*
         telemetry.addData("", "--- DRIVE CONTROLS ---");
         telemetry.addData("Left Stick Button", "Toggle slow drive");
         telemetry.addData("X", "Toggle field relative");
@@ -416,7 +417,7 @@ public class BasicDrive25 extends LinearOpMode {
         telemetry.addData("Gamepad2 A", "Smart shooting");
         telemetry.addData("Gamepad2 RT", "Manual shooter");
         telemetry.addData("Gamepad2 B", "Manual feed");
-        telemetry.addData("Gamepad2 X", "Stop shooting");
+        telemetry.addData("Gamepad2 X", "Stop shooting");*/
         
         telemetry.update();
     }
