@@ -29,12 +29,12 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.MechanumFieldRelative;
+import org.firstinspires.ftc.teamcode.util.DecodeHelper;
 
 @TeleOp(name="BasicDrive25", group="Linear OpMode")
 
@@ -46,7 +46,9 @@ public class BasicDrive25 extends LinearOpMode {
     private boolean prevModeToggle = false;
     private boolean fieldRelativeMode = false;
     private MechanumFieldRelative drive;
-    private boolean shooterState = false;
+    
+    // DECODE Helper for artifact shooting
+    private DecodeHelper decodeHelper;
 
 
     @Override
@@ -57,11 +59,8 @@ public class BasicDrive25 extends LinearOpMode {
         DcMotor rightFrontDrive = hardwareMap.get(DcMotor.class, "frontRight");
         DcMotor rightBackDrive = hardwareMap.get(DcMotor.class, "backRight");
 
-        DcMotor shooter = hardwareMap.get(DcMotor.class, "shooter");
-        shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        CRServo servo1 = hardwareMap.get(CRServo.class, "servo1");
-        CRServo servo2 = hardwareMap.get(CRServo.class, "servo2");
+        // Initialize DecodeHelper for shooting functionality
+        decodeHelper = new DecodeHelper(hardwareMap, telemetry);
 
         // Pass mapped motors to MechanumFieldRelative
         drive = new MechanumFieldRelative(leftFrontDrive, rightFrontDrive, leftBackDrive, rightBackDrive, gamepad1, hardwareMap);
@@ -105,40 +104,42 @@ public class BasicDrive25 extends LinearOpMode {
                 }
             }
 
-            if(gamepad2.a){
-                servo1.setPower(1.0);
-                servo2.setPower(-1.0);
-            } else {
-                servo2.setPower(0.0);
-                servo1.setPower(0.0);
+            // ========== DECODE HELPER CONTROLS ==========
+            
+            // Smart shooting with gamepad2.a (single shot on press, continuous when held)
+            decodeHelper.handleShootButton(gamepad2.a);
+            
+            // Manual shooter control with right trigger (overrides smart shooting)
+            if (gamepad2.right_trigger > 0.1) {
+                decodeHelper.setShooterPower(gamepad2.right_trigger);
+            }
+            
+            // Manual feed servo control with gamepad2.b (for testing/emergency)
+            if (gamepad2.b) {
+                decodeHelper.setFeedPower(1.0);
+            } else if (!decodeHelper.isShooting()) {
+                // Only stop feed if DecodeHelper isn't currently shooting
+                decodeHelper.setFeedPower(0.0);
+            }
+            
+            // Emergency stop all shooting with gamepad2.x
+            if (gamepad2.x) {
+                decodeHelper.reset();
             }
 
-            if(gamepad2.triangle){
-                shooterState = !shooterState;
-                shooter.setPower(shooterState ? 0.65 : 0.0);
-                waitWhile(0.5);
-            }
-            if(!shooterState){
-                shooter.setPower(gamepad2.right_trigger * 1.0);
-            }
-
+            // ========== TELEMETRY ==========
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Drive Mode", fieldRelativeMode ? "Field Relative" : "Robot Centric");
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", drive.leftFrontPower, drive.rightFrontPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", drive.leftBackPower, drive.rightBackPower);
             telemetry.addData("Slow Drive", drive.getSlowDrive() == 1 ? "Enabled" : "Disabled");
-            telemetry.addData("Shooter Power", shooter.getPower());
-            telemetry.update();
-        }
-    }
-
-
-    /*Time Functions*/
-    //Function to wait specified time in seconds without stopping robot.
-    private void waitWhile(double time){
-        runtime.reset();
-        while (opModeIsActive() && (runtime.seconds() < time)) {
-            telemetry.addData("Path", " %4.1f S Elapsed", runtime.seconds());
+            telemetry.addData("", "--- DECODE SHOOTING ---");
+            decodeHelper.updateTelemetry();
+            telemetry.addData("", "--- CONTROLS ---");
+            telemetry.addData("Gamepad2 A", "Smart shooting (hold for continuous)");
+            telemetry.addData("Gamepad2 RT", "Manual shooter power");
+            telemetry.addData("Gamepad2 B", "Manual feed servos");
+            telemetry.addData("Gamepad2 X", "Emergency stop shooting");
             telemetry.update();
         }
     }
