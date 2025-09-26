@@ -1,918 +1,668 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
+
 /**
- * AutoHelper - Comprehensive Autonomous Programming Helper Class
+ * AutoHelper - Advanced Autonomous Framework (v3.0)
  * 
- * This class provides all the essential functionality needed for autonomous OpModes:
- * - Hardware initialization and management
- * - Step-based autonomous execution
- * - Movement functions (time-based and encoder-based)
- * - Integration with Mechanum drive classes
- * - Telemetry and debugging utilities
- * - Safety and error handling
+ * This class provides a comprehensive, easy-to-use framework for creating autonomous OpModes
+ * using the AdvancedPositioningHelper system. It features intelligent error detection,
+ * recovery mechanisms, and both fluent API and step-based autonomous programming.
  * 
- * Usage:
- * 1. Create an instance in your autonomous OpMode
- * 2. Call initialize() in your runOpMode() method
- * 3. Use the movement and step functions to build your autonomous routine
+ * Key Features:
+ * - Fluent API for intuitive autonomous programming
+ * - Smart error detection and automatic recovery
+ * - Timeout handling and stuck detection
+ * - AprilTag-based relocalization
+ * - Dual camera support and automatic switching
+ * - Comprehensive telemetry and debugging
+ * - Future-ready for collision avoidance
+ * 
+ * Usage Example (Modern Fluent API):
+ * 
+ * public class MyAuto extends LinearOpMode {
+ *     private AutoHelper autoHelper;
+ *     
+ *     @Override
+ *     public void runOpMode() {
+ *         autoHelper = new AutoHelper(this, hardwareMap, telemetry);
+ *         autoHelper.initialize();
+ *         
+ *         waitForStart();
+ *         
+ *         autoHelper
+ *             .moveTo(24, 36, 90, "Move to scoring position")
+ *             .waitFor(1000, "Wait for arm to extend")
+ *             .moveBy(6, 0, 0, "Approach target")
+ *             .turnTo(45, "Turn to basket")
+ *             .moveBy(-6, 0, 0, "Back away")
+ *             .executeAll();
+ *     }
+ * }
+ * 
+ * Usage Example (Advanced with Error Handling):
+ * 
+ * public class MyAuto extends LinearOpMode {
+ *     private AutoHelper autoHelper;
+ *     
+ *     @Override
+ *     public void runOpMode() {
+ *         autoHelper = new AutoHelper(this, hardwareMap, telemetry);
+ *         autoHelper.setRelocalizationEnabled(true); // Enable AprilTag recovery
+ *         autoHelper.setStuckDetectionEnabled(true); // Enable stuck detection
+ *         autoHelper.initialize();
+ *         
+ *         waitForStart();
+ *         
+ *         autoHelper
+ *             .addStep("Drive to specimen area", () -> 
+ *                 autoHelper.aph.moveTo(12, 60, 0, 0.8, 3000))
+ *             .addStep("Grab specimen", () -> {
+ *                 // Custom action code here
+ *                 sleep(500);
+ *                 return true;
+ *             })
+ *             .moveTo(24, 36, 90, "Move to basket")
+ *             .executeAllWithRecovery();
+ *     }
+ * }
  * 
  * @author FTC Team
- * @version 1.0
+ * @version 3.0
  */
 public class AutoHelper {
     
-    // Hardware objects
-    private DcMotor leftFrontDrive = null;
-    private DcMotor rightFrontDrive = null;
-    private DcMotor leftBackDrive = null;
-    private DcMotor rightBackDrive = null;
-    
-    // Drive systems
-    private MechanumDrive robotDrive = null;
-    private MechanumFieldRelative fieldRelativeDrive = null;
-    private AdvancedPositioningHelper positioningHelper = null;
-    
-    // OpMode references
+    // Core system components
+    public AdvancedPositioningHelper aph = null;
     private LinearOpMode opMode;
     private HardwareMap hardwareMap;
     private Telemetry telemetry;
     
-    // Step control
-    private int currentStep = 0;
-    private boolean stepComplete = false;
+    // Step management
+    private List<AutoStep> steps = new ArrayList<>();
+    private int currentStepIndex = 0;
+    
+    // Error handling and recovery
+    private boolean relocalizationEnabled = false;
+    private boolean stuckDetectionEnabled = true;
+    private boolean debugTelemetryEnabled = true;
     private ElapsedTime stepTimer = new ElapsedTime();
-    private ElapsedTime runtime = new ElapsedTime();
+    private ElapsedTime lastPositionTimer = new ElapsedTime();
+    private double lastX = 0, lastY = 0, lastHeading = 0;
     
     // Movement parameters
-    public static final double DEFAULT_DRIVE_SPEED = 0.6;
-    public static final double DEFAULT_TURN_SPEED = 0.4;
-    public static final double DEFAULT_STRAFE_SPEED = 0.5;
+    private double defaultPower = 0.6;
+    private double defaultTimeout = 5000; // 5 seconds
+    private double stuckThreshold = 2.0; // inches
+    private double stuckTimeThreshold = 2000; // 2 seconds
     
-    // Encoder constants (adjust based on your robot)
-    public static final double COUNTS_PER_MOTOR_REV = 537.7;    // HD Hex Motor
-    public static final double DRIVE_GEAR_REDUCTION = 1.0;      // No External Gearing
-    public static final double WHEEL_DIAMETER_INCHES = 4.0;     // Wheel diameter
-    public static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
-                                                  (WHEEL_DIAMETER_INCHES * 3.1415);
-    public static final double ROBOT_WIDTH_INCHES = 18.0;       // Distance between left and right wheels
-    public static final double DEGREES_TO_INCHES = (ROBOT_WIDTH_INCHES * 3.1415) / 360.0;
+    // Execution state
+    private boolean allStepsCompleted = false;
+    private boolean executionFailed = false;
+    private String lastErrorMessage = "";
     
-    // Motor name configuration
-    public static final String LEFT_FRONT_MOTOR = "frontLeft";
-    public static final String RIGHT_FRONT_MOTOR = "frontRight";
-    public static final String LEFT_BACK_MOTOR = "backLeft";
-    public static final String RIGHT_BACK_MOTOR = "backRight";
-    
-    // Drive mode enumeration
-    public enum DriveMode {
-        BASIC_MECHANUM,    // Use MechanumDrive class
-        FIELD_RELATIVE,    // Use MechanumFieldRelative class
-        ADVANCED_POSITIONING // Use AdvancedPositioningHelper with sensor fusion
+    // Inner class for step management
+    public static class AutoStep {
+        public final String description;
+        public final Supplier<Boolean> action;
+        public boolean completed = false;
+        public boolean failed = false;
+        public long executionTime = 0;
+        public String errorMessage = "";
+        
+        public AutoStep(String description, Supplier<Boolean> action) {
+            this.description = description;
+            this.action = action;
+        }
     }
     
     /**
-     * Constructor
+     * Constructor - Creates AutoHelper with APH system
      * @param opMode The LinearOpMode instance
+     * @param hardwareMap The hardware map
+     * @param telemetry The telemetry object
      */
-    public AutoHelper(LinearOpMode opMode) {
+    public AutoHelper(LinearOpMode opMode, HardwareMap hardwareMap, Telemetry telemetry) {
         this.opMode = opMode;
-        this.hardwareMap = opMode.hardwareMap;
-        this.telemetry = opMode.telemetry;
+        this.hardwareMap = hardwareMap;
+        this.telemetry = telemetry;
+        this.steps = new ArrayList<>();
     }
     
-    /**
-     * Initialize all hardware and systems
-     * @param driveMode Which drive system to use
-     */
-    public void initialize(DriveMode driveMode) {
-        initializeMotors();
-        initializeDriveSystem(driveMode);
-        resetRuntime();
-        
-        telemetry.addData("AutoHelper", "Initialized with %s drive", driveMode.toString());
-        telemetry.update();
-    }
+    // ========== INITIALIZATION METHODS ==========
     
     /**
-     * Initialize with advanced positioning system
-     * @param driveMode Drive system to use
-     * @param webcamName Name of webcam for AprilTag detection
-     */
-    public void initialize(DriveMode driveMode, String webcamName) {
-        initializeMotors();
-        initializeDriveSystem(driveMode);
-        
-        if (driveMode == DriveMode.ADVANCED_POSITIONING) {
-            positioningHelper = new AdvancedPositioningHelper(opMode);
-            positioningHelper.initialize(webcamName);
-        }
-        
-        resetRuntime();
-        
-        telemetry.addData("AutoHelper", "Initialized with %s drive", driveMode.toString());
-        if (webcamName != null) {
-            telemetry.addData("Camera", webcamName);
-        }
-        telemetry.update();
-    }
-    
-    /**
-     * Initialize with basic mechanum drive (default)
+     * Initialize the AutoHelper with AdvancedPositioningHelper
+     * Uses dual camera setup for maximum AprilTag visibility
      */
     public void initialize() {
-        initialize(DriveMode.BASIC_MECHANUM);
-    }
-    
-    // ========================================
-    // HARDWARE INITIALIZATION
-    // ========================================
-    
-    /**
-     * Initialize drive motors
-     */
-    private void initializeMotors() {
-        // Map motors
-        leftFrontDrive = hardwareMap.get(DcMotor.class, LEFT_FRONT_MOTOR);
-        rightFrontDrive = hardwareMap.get(DcMotor.class, RIGHT_FRONT_MOTOR);
-        leftBackDrive = hardwareMap.get(DcMotor.class, LEFT_BACK_MOTOR);
-        rightBackDrive = hardwareMap.get(DcMotor.class, RIGHT_BACK_MOTOR);
-        
-        // Set motor directions
-        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightBackDrive.setDirection(DcMotor.Direction.FORWARD);
-        
-        // Set zero power behavior
-        leftFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        leftBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        
-        // Reset encoders
-        resetEncoders();
+        initialize("Webcam 1", "Webcam 2");
     }
     
     /**
-     * Initialize drive system
+     * Initialize with single camera
+     * @param webcamName Name of webcam for AprilTag detection
      */
-    private void initializeDriveSystem(DriveMode driveMode) {
-        switch (driveMode) {
-            case BASIC_MECHANUM:
-                robotDrive = new MechanumDrive(leftFrontDrive, rightFrontDrive, leftBackDrive, rightBackDrive, opMode.gamepad1);
-                break;
-            case FIELD_RELATIVE:
-                fieldRelativeDrive = new MechanumFieldRelative(leftFrontDrive, rightFrontDrive, leftBackDrive, rightBackDrive, opMode.gamepad1, hardwareMap);
-                break;
-            case ADVANCED_POSITIONING:
-                // AdvancedPositioningHelper is initialized separately with camera
-                break;
+    public void initialize(String webcamName) {
+        initialize(webcamName, null);
+    }
+    
+    /**
+     * Initialize with dual camera setup
+     * @param frontWebcamName Front camera name (or null)
+     * @param backWebcamName Back camera name (or null)
+     */
+    public void initialize(String frontWebcamName, String backWebcamName) {
+        try {
+            aph = new AdvancedPositioningHelper(opMode);
+            
+            if (frontWebcamName != null && backWebcamName != null) {
+                // Dual camera initialization
+                aph.initializeDualCamera(frontWebcamName, backWebcamName);
+                telemetry.addData("AutoHelper", "Initialized with dual cameras");
+                telemetry.addData("Front Camera", frontWebcamName);
+                telemetry.addData("Back Camera", backWebcamName);
+            } else if (frontWebcamName != null) {
+                // Single camera initialization
+                aph.initialize(frontWebcamName);
+                telemetry.addData("AutoHelper", "Initialized with single camera");
+                telemetry.addData("Camera", frontWebcamName);
+            } else {
+                // Motor encoders only
+                aph.initializeEncodersOnly();
+                telemetry.addData("AutoHelper", "Initialized with encoders only");
+            }
+            
+            telemetry.addData("Status", "Ready for autonomous");
+            telemetry.update();
+            
+        } catch (Exception e) {
+            telemetry.addData("ERROR", "Failed to initialize: " + e.getMessage());
+            telemetry.update();
+            throw new RuntimeException("AutoHelper initialization failed", e);
         }
     }
     
-    // ========================================
-    // STEP MANAGEMENT
-    // ========================================
+    // ========== CONFIGURATION METHODS ==========
     
     /**
-     * Move to the next step
+     * Enable or disable relocalization using AprilTags when stuck
      */
-    public void nextStep() {
-        currentStep++;
-        stepComplete = false;
-        stepTimer.reset();
+    public AutoHelper setRelocalizationEnabled(boolean enabled) {
+        this.relocalizationEnabled = enabled;
+        return this;
     }
     
     /**
-     * Go to a specific step
+     * Enable or disable stuck detection
      */
-    public void goToStep(int step) {
-        currentStep = step;
-        stepComplete = false;
-        stepTimer.reset();
+    public AutoHelper setStuckDetectionEnabled(boolean enabled) {
+        this.stuckDetectionEnabled = enabled;
+        return this;
     }
     
     /**
-     * Reset steps to beginning
+     * Enable or disable debug telemetry
      */
-    public void resetSteps() {
-        currentStep = 0;
-        stepComplete = false;
-        stepTimer.reset();
+    public AutoHelper setDebugTelemetryEnabled(boolean enabled) {
+        this.debugTelemetryEnabled = enabled;
+        return this;
     }
     
     /**
-     * Get current step number
+     * Set default movement parameters
      */
-    public int getCurrentStep() {
-        return currentStep;
+    public AutoHelper setDefaultParameters(double power, double timeoutMs) {
+        this.defaultPower = power;
+        this.defaultTimeout = timeoutMs;
+        return this;
     }
     
     /**
-     * Check if current step is complete
+     * Set stuck detection parameters
      */
-    public boolean isStepComplete() {
-        return stepComplete;
+    public AutoHelper setStuckDetectionParameters(double thresholdInches, double timeThresholdMs) {
+        this.stuckThreshold = thresholdInches;
+        this.stuckTimeThreshold = timeThresholdMs;
+        return this;
+    }
+    
+    // ========== FLUENT API MOVEMENT METHODS ==========
+    
+    /**
+     * Move to absolute field position (fluent API)
+     */
+    public AutoHelper moveTo(double x, double y, double heading, String description) {
+        return addStep(description, () -> aph.moveTo(x, y, heading, defaultPower, (long)defaultTimeout));
     }
     
     /**
-     * Get step timer
+     * Move to absolute field position with custom parameters (fluent API)
      */
-    public double getStepTime() {
-        return stepTimer.seconds();
+    public AutoHelper moveTo(double x, double y, double heading, double power, long timeoutMs, String description) {
+        return addStep(description, () -> aph.moveTo(x, y, heading, power, timeoutMs));
     }
     
-    // ========================================
-    // TIME-BASED MOVEMENT FUNCTIONS
-    // ========================================
+    /**
+     * Move by relative distance (fluent API)
+     */
+    public AutoHelper moveBy(double deltaX, double deltaY, double deltaHeading, String description) {
+        return addStep(description, () -> aph.moveBy(deltaX, deltaY, deltaHeading, defaultPower, (long)defaultTimeout));
+    }
     
     /**
-     * Drive with specified powers for a duration
-     * @param seconds Duration to drive
-     * @param forward Forward power (-1.0 to 1.0)
-     * @param strafe Strafe power (-1.0 to 1.0)
-     * @param rotate Rotation power (-1.0 to 1.0)
-     * @return true when movement is complete
+     * Move by relative distance with custom parameters (fluent API)
      */
-    public boolean driveFor(double seconds, double forward, double strafe, double rotate) {
-        if (!stepComplete) {
-            stepTimer.reset();
-            stepComplete = true;
+    public AutoHelper moveBy(double deltaX, double deltaY, double deltaHeading, double power, long timeoutMs, String description) {
+        return addStep(description, () -> aph.moveBy(deltaX, deltaY, deltaHeading, power, timeoutMs));
+    }
+    
+    /**
+     * Turn to absolute heading (fluent API)
+     */
+    public AutoHelper turnTo(double heading, String description) {
+        return addStep(description, () -> aph.turnTo(heading, defaultPower, (long)defaultTimeout));
+    }
+    
+    /**
+     * Turn to absolute heading with custom parameters (fluent API)
+     */
+    public AutoHelper turnTo(double heading, double power, long timeoutMs, String description) {
+        return addStep(description, () -> aph.turnTo(heading, power, timeoutMs));
+    }
+    
+    /**
+     * Turn by relative angle (fluent API)
+     */
+    public AutoHelper turnBy(double deltaHeading, String description) {
+        return addStep(description, () -> {
+            double currentHeading = aph.getCurrentHeading();
+            return aph.turnTo(currentHeading + deltaHeading, defaultPower, (long)defaultTimeout);
+        });
+    }
+    
+    /**
+     * Wait for specified time (fluent API)
+     */
+    public AutoHelper waitFor(long milliseconds, String description) {
+        return addStep(description, () -> {
+            opMode.sleep(milliseconds);
+            return true;
+        });
+    }
+    
+    /**
+     * Wait until a condition is met (fluent API)
+     */
+    public AutoHelper waitUntil(Supplier<Boolean> condition, String description) {
+        return waitUntil(condition, 5000, description);
+    }
+    
+    /**
+     * Wait until a condition is met with timeout (fluent API)
+     */
+    public AutoHelper waitUntil(Supplier<Boolean> condition, long timeoutMs, String description) {
+        return addStep(description, () -> {
+            ElapsedTime timer = new ElapsedTime();
+            while (opMode.opModeIsActive() && timer.milliseconds() < timeoutMs) {
+                if (condition.get()) {
+                    return true;
+                }
+                opMode.sleep(50);
+            }
+            return false; // Timeout
+        });
+    }
+    
+    // ========== STEP MANAGEMENT METHODS ==========
+    
+    /**
+     * Add a custom step with action (fluent API)
+     */
+    public AutoHelper addStep(String description, Supplier<Boolean> action) {
+        steps.add(new AutoStep(description, action));
+        return this;
+    }
+    
+    /**
+     * Add a simple action step (always returns true)
+     */
+    public AutoHelper addAction(String description, Runnable action) {
+        return addStep(description, () -> {
+            action.run();
+            return true;
+        });
+    }
+    
+    /**
+     * Clear all steps (useful for dynamic step building)
+     */
+    public AutoHelper clearSteps() {
+        steps.clear();
+        currentStepIndex = 0;
+        allStepsCompleted = false;
+        executionFailed = false;
+        return this;
+    }
+    
+    // ========== EXECUTION METHODS ==========
+    
+    /**
+     * Execute all steps with basic error handling
+     */
+    public boolean executeAll() {
+        return executeSteps(false);
+    }
+    
+    /**
+     * Execute all steps with advanced recovery mechanisms
+     */
+    public boolean executeAllWithRecovery() {
+        return executeSteps(true);
+    }
+    
+    /**
+     * Execute steps with optional recovery
+     */
+    private boolean executeSteps(boolean useRecovery) {
+        if (steps.isEmpty()) {
+            telemetry.addData("AutoHelper", "No steps to execute");
+            telemetry.update();
+            return true;
         }
         
-        if (stepTimer.seconds() < seconds && opMode.opModeIsActive()) {
-            // Calculate and set motor powers
-            setMechanumPowers(forward, strafe, rotate);
+        telemetry.addData("AutoHelper", "Executing %d steps", steps.size());
+        telemetry.update();
+        
+        currentStepIndex = 0;
+        allStepsCompleted = false;
+        executionFailed = false;
+        
+        for (currentStepIndex = 0; currentStepIndex < steps.size() && opMode.opModeIsActive(); currentStepIndex++) {
+            AutoStep step = steps.get(currentStepIndex);
+            
+            if (debugTelemetryEnabled) {
+                telemetry.addData("Current Step", "%d/%d: %s", currentStepIndex + 1, steps.size(), step.description);
+                telemetry.update();
+            }
+            
+            if (!executeStep(step, useRecovery)) {
+                executionFailed = true;
+                lastErrorMessage = step.errorMessage;
+                
+                telemetry.addData("ERROR", "Step %d failed: %s", currentStepIndex + 1, step.errorMessage);
+                telemetry.addData("Step", step.description);
+                telemetry.update();
+                
+                return false;
+            }
+        }
+        
+        allStepsCompleted = true;
+        telemetry.addData("AutoHelper", "All steps completed successfully");
+        telemetry.update();
+        
+        return true;
+    }
+    
+    /**
+     * Execute a single step with error handling and recovery
+     */
+    private boolean executeStep(AutoStep step, boolean useRecovery) {
+        stepTimer.reset();
+        
+        // Store position for stuck detection
+        if (stuckDetectionEnabled && aph != null) {
+            lastX = aph.getCurrentX();
+            lastY = aph.getCurrentY();
+            lastHeading = aph.getCurrentHeading();
+            lastPositionTimer.reset();
+        }
+        
+        try {
+            boolean success = step.action.get();
+            step.executionTime = (long)stepTimer.milliseconds();
+            
+            if (success) {
+                step.completed = true;
+                return true;
+            } else {
+                step.failed = true;
+                step.errorMessage = "Step returned false (timeout or failure)";
+                
+                // Attempt recovery if enabled
+                if (useRecovery && attemptRecovery(step)) {
+                    step.completed = true;
+                    step.failed = false;
+                    step.errorMessage = "Recovered successfully";
+                    return true;
+                }
+                
+                return false;
+            }
+            
+        } catch (Exception e) {
+            step.failed = true;
+            step.errorMessage = "Exception: " + e.getMessage();
+            step.executionTime = (long)stepTimer.milliseconds();
+            
+            // Attempt recovery if enabled
+            if (useRecovery && attemptRecovery(step)) {
+                step.completed = true;
+                step.failed = false;
+                step.errorMessage = "Recovered from exception";
+                return true;
+            }
+            
             return false;
-        } else {
-            stopAllMotors();
-            nextStep();
-            return true;
         }
     }
     
     /**
-     * Drive forward for specified time
+     * Attempt to recover from a failed step
      */
-    public boolean driveForward(double seconds, double speed) {
-        return driveFor(seconds, speed, 0, 0);
-    }
-    
-    /**
-     * Drive backward for specified time
-     */
-    public boolean driveBackward(double seconds, double speed) {
-        return driveFor(seconds, -speed, 0, 0);
-    }
-    
-    /**
-     * Strafe left for specified time
-     */
-    public boolean strafeLeft(double seconds, double speed) {
-        return driveFor(seconds, 0, speed, 0);
-    }
-    
-    /**
-     * Strafe right for specified time
-     */
-    public boolean strafeRight(double seconds, double speed) {
-        return driveFor(seconds, 0, -speed, 0);
-    }
-    
-    /**
-     * Turn left (counterclockwise) for specified time
-     */
-    public boolean turnLeft(double seconds, double speed) {
-        return driveFor(seconds, 0, 0, speed);
-    }
-    
-    /**
-     * Turn right (clockwise) for specified time
-     */
-    public boolean turnRight(double seconds, double speed) {
-        return driveFor(seconds, 0, 0, -speed);
-    }
-    
-    // ========================================
-    // ENCODER-BASED MOVEMENT FUNCTIONS
-    // ========================================
-    
-    /**
-     * Drive a specific distance using encoders
-     * @param forwardInches Forward distance (positive = forward)
-     * @param strafeInches Strafe distance (positive = left)
-     * @param rotationDegrees Rotation (positive = counterclockwise)
-     * @param speed Motor speed (0.0 to 1.0)
-     * @return true when movement is complete
-     */
-    public boolean driveDistance(double forwardInches, double strafeInches, double rotationDegrees, double speed) {
-        if (!stepComplete) {
-            // Calculate target positions
-            int forwardTarget = (int)(forwardInches * COUNTS_PER_INCH);
-            int strafeTarget = (int)(strafeInches * COUNTS_PER_INCH);
-            int rotationTarget = (int)(rotationDegrees * DEGREES_TO_INCHES * COUNTS_PER_INCH);
+    private boolean attemptRecovery(AutoStep failedStep) {
+        telemetry.addData("Recovery", "Attempting recovery for: %s", failedStep.description);
+        telemetry.update();
+        
+        // Check if robot is stuck
+        if (stuckDetectionEnabled && isRobotStuck()) {
+            telemetry.addData("Recovery", "Robot appears stuck, attempting relocalization");
+            telemetry.update();
             
-            // Calculate individual motor targets
-            int leftFrontTarget = leftFrontDrive.getCurrentPosition() + forwardTarget + strafeTarget + rotationTarget;
-            int rightFrontTarget = rightFrontDrive.getCurrentPosition() + forwardTarget - strafeTarget - rotationTarget;
-            int leftBackTarget = leftBackDrive.getCurrentPosition() + forwardTarget - strafeTarget + rotationTarget;
-            int rightBackTarget = rightBackDrive.getCurrentPosition() + forwardTarget + strafeTarget - rotationTarget;
-            
-            // Set target positions
-            leftFrontDrive.setTargetPosition(leftFrontTarget);
-            rightFrontDrive.setTargetPosition(rightFrontTarget);
-            leftBackDrive.setTargetPosition(leftBackTarget);
-            rightBackDrive.setTargetPosition(rightBackTarget);
-            
-            // Set to RUN_TO_POSITION mode
-            setRunToPositionMode();
-            
-            // Set motor powers
-            setMotorPowers(speed, speed, speed, speed);
-            
-            stepComplete = true;
+            // Try AprilTag relocalization
+            if (relocalizationEnabled && aph != null && aph.attemptRelocalization()) {
+                telemetry.addData("Recovery", "Relocalization successful");
+                telemetry.update();
+                opMode.sleep(500); // Brief pause before retry
+                
+                // Retry the failed step
+                try {
+                    return failedStep.action.get();
+                } catch (Exception e) {
+                    telemetry.addData("Recovery", "Retry failed: %s", e.getMessage());
+                    telemetry.update();
+                }
+            }
         }
         
-        // Check if movement is complete
-        if (!isMoving()) {
-            stopAllMotors();
-            setRunUsingEncoderMode();
-            nextStep();
-            return true;
-        }
+        // Additional recovery strategies can be added here
+        // For example: back up slightly, try alternate path, etc.
         
+        telemetry.addData("Recovery", "Recovery failed");
+        telemetry.update();
         return false;
     }
     
     /**
-     * Drive forward a specific distance
+     * Check if robot appears to be stuck
      */
-    public boolean driveForwardDistance(double inches, double speed) {
-        return driveDistance(inches, 0, 0, speed);
-    }
-    
-    /**
-     * Drive backward a specific distance
-     */
-    public boolean driveBackwardDistance(double inches, double speed) {
-        return driveDistance(-inches, 0, 0, speed);
-    }
-    
-    /**
-     * Strafe left a specific distance
-     */
-    public boolean strafeLeftDistance(double inches, double speed) {
-        return driveDistance(0, inches, 0, speed);
-    }
-    
-    /**
-     * Strafe right a specific distance
-     */
-    public boolean strafeRightDistance(double inches, double speed) {
-        return driveDistance(0, -inches, 0, speed);
-    }
-    
-    /**
-     * Turn left a specific number of degrees
-     */
-    public boolean turnLeftDegrees(double degrees, double speed) {
-        return driveDistance(0, 0, degrees, speed);
-    }
-    
-    /**
-     * Turn right a specific number of degrees
-     */
-    public boolean turnRightDegrees(double degrees, double speed) {
-        return driveDistance(0, 0, -degrees, speed);
-    }
-    
-    // ========================================
-    // UTILITY FUNCTIONS
-    // ========================================
-    
-    /**
-     * Wait for a specified amount of time
-     * @param seconds Time to wait
-     * @return true when wait is complete
-     */
-    public boolean waitFor(double seconds) {
-        if (!stepComplete) {
-            stepTimer.reset();
-            stepComplete = true;
+    private boolean isRobotStuck() {
+        if (aph == null || lastPositionTimer.milliseconds() < stuckTimeThreshold) {
+            return false;
         }
         
-        if (stepTimer.seconds() >= seconds) {
-            nextStep();
-            return true;
+        double currentX = aph.getCurrentX();
+        double currentY = aph.getCurrentY();
+        double currentHeading = aph.getCurrentHeading();
+        
+        double distanceMoved = Math.sqrt(
+            Math.pow(currentX - lastX, 2) + 
+            Math.pow(currentY - lastY, 2)
+        );
+        
+        double headingChange = Math.abs(currentHeading - lastHeading);
+        if (headingChange > 180) headingChange = 360 - headingChange;
+        
+        // Robot is considered stuck if it hasn't moved much in the time threshold
+        return distanceMoved < stuckThreshold && headingChange < 10; // 10 degrees
+    }
+    
+    // ========== STATUS AND TELEMETRY METHODS ==========
+    
+    /**
+     * Get current execution status
+     */
+    public boolean isExecutionComplete() {
+        return allStepsCompleted;
+    }
+    
+    /**
+     * Get execution failure status
+     */
+    public boolean hasExecutionFailed() {
+        return executionFailed;
+    }
+    
+    /**
+     * Get last error message
+     */
+    public String getLastErrorMessage() {
+        return lastErrorMessage;
+    }
+    
+    /**
+     * Get current step information
+     */
+    public String getCurrentStepInfo() {
+        if (currentStepIndex >= steps.size()) {
+            return "All steps completed";
+        }
+        AutoStep step = steps.get(currentStepIndex);
+        return String.format("Step %d/%d: %s", currentStepIndex + 1, steps.size(), step.description);
+    }
+    
+    /**
+     * Display comprehensive telemetry
+     */
+    public void displayTelemetry() {
+        if (!debugTelemetryEnabled) return;
+        
+        telemetry.addData("AutoHelper Status", allStepsCompleted ? "Complete" : executionFailed ? "Failed" : "Running");
+        telemetry.addData("Current Step", getCurrentStepInfo());
+        
+        if (aph != null) {
+            telemetry.addData("Position", "X: %.1f, Y: %.1f, H: %.1f°", 
+                aph.getCurrentX(), aph.getCurrentY(), aph.getCurrentHeading());
         }
         
-        return false;
-    }
-    
-    /**
-     * Set mechanum drive powers with normalization
-     */
-    private void setMechanumPowers(double forward, double strafe, double rotate) {
-        double leftFrontPower = forward + strafe + rotate;
-        double rightFrontPower = forward - strafe - rotate;
-        double leftBackPower = forward - strafe + rotate;
-        double rightBackPower = forward + strafe - rotate;
+        if (executionFailed) {
+            telemetry.addData("Last Error", lastErrorMessage);
+        }
         
-        // Normalize powers
-        double max = Math.max(1.0, Math.max(Math.abs(leftFrontPower),
-                Math.max(Math.abs(rightFrontPower),
-                Math.max(Math.abs(leftBackPower), Math.abs(rightBackPower)))));
+        // Show step summary
+        int completed = 0, failed = 0;
+        for (AutoStep step : steps) {
+            if (step.completed) completed++;
+            if (step.failed) failed++;
+        }
         
-        setMotorPowers(leftFrontPower / max, rightFrontPower / max, 
-                      leftBackPower / max, rightBackPower / max);
-    }
-    
-    /**
-     * Set individual motor powers
-     */
-    public void setMotorPowers(double leftFront, double rightFront, double leftBack, double rightBack) {
-        leftFrontDrive.setPower(leftFront);
-        rightFrontDrive.setPower(rightFront);
-        leftBackDrive.setPower(leftBack);
-        rightBackDrive.setPower(rightBack);
-    }
-    
-    /**
-     * Stop all motors
-     */
-    public void stopAllMotors() {
-        setMotorPowers(0, 0, 0, 0);
-    }
-    
-    /**
-     * Check if any motor is still moving
-     */
-    public boolean isMoving() {
-        return leftFrontDrive.isBusy() || rightFrontDrive.isBusy() || 
-               leftBackDrive.isBusy() || rightBackDrive.isBusy();
-    }
-    
-    /**
-     * Reset all encoders (FTC best practice)
-     * Always call this at the beginning of OpModes to ensure encoders start at zero
-     */
-    public void resetEncoders() {
-        // Stop and reset all motor encoders
-        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        
-        // Turn motors back on for use (required after STOP_AND_RESET_ENCODER)
-        setRunWithoutEncoderMode();
-        
-        telemetry.addData("Encoders", "Reset to zero");
+        telemetry.addData("Steps", "Completed: %d, Failed: %d, Total: %d", completed, failed, steps.size());
         telemetry.update();
     }
     
     /**
-     * Set motors to RUN_WITHOUT_ENCODER mode (FTC best practice for autonomous)
-     * This doesn't disable encoders, it just disables built-in velocity control
+     * Get detailed execution report
      */
-    private void setRunWithoutEncoderMode() {
-        leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-    }
-    
-    /**
-     * Set motors to RUN_USING_ENCODER mode (for velocity control)
-     */
-    private void setRunUsingEncoderMode() {
-        leftFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-    }
-    
-    /**
-     * Set motors to RUN_TO_POSITION mode
-     */
-    private void setRunToPositionMode() {
-        leftFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        rightFrontDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        leftBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        rightBackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-    }
-    
-    /**
-     * Reset runtime timer
-     */
-    public void resetRuntime() {
-        runtime.reset();
-    }
-    
-    /**
-     * Get total runtime
-     */
-    public double getRuntime() {
-        return runtime.seconds();
-    }
-    
-    // ========================================
-    // ADVANCED POSITIONING FUNCTIONS
-    // ========================================
-    
-    /**
-     * Move robot to exact field position using advanced positioning
-     * @param targetX Target X coordinate (inches)
-     * @param targetY Target Y coordinate (inches)
-     * @param targetHeading Target heading (degrees)
-     * @param maxSpeed Maximum movement speed
-     * @return true when position is reached
-     */
-    public boolean goToPosition(double targetX, double targetY, double targetHeading, double maxSpeed) {
-        if (positioningHelper == null) {
-            telemetry.addData("Error", "Advanced positioning not initialized");
-            telemetry.update();
-            return true;
+    public String getExecutionReport() {
+        StringBuilder report = new StringBuilder();
+        report.append("AutoHelper Execution Report\n");
+        report.append("==========================\n");
+        report.append(String.format("Total Steps: %d\n", steps.size()));
+        
+        int completed = 0, failed = 0;
+        long totalTime = 0;
+        
+        for (int i = 0; i < steps.size(); i++) {
+            AutoStep step = steps.get(i);
+            report.append(String.format("\nStep %d: %s\n", i + 1, step.description));
+            report.append(String.format("  Status: %s\n", 
+                step.completed ? "Completed" : step.failed ? "Failed" : "Not executed"));
+            report.append(String.format("  Time: %d ms\n", step.executionTime));
+            
+            if (step.failed && !step.errorMessage.isEmpty()) {
+                report.append(String.format("  Error: %s\n", step.errorMessage));
+            }
+            
+            if (step.completed) completed++;
+            if (step.failed) failed++;
+            totalTime += step.executionTime;
         }
         
-        if (!stepComplete) {
-            stepTimer.reset();
-            stepComplete = true;
+        report.append(String.format("\nSummary: %d completed, %d failed\n", completed, failed));
+        report.append(String.format("Total execution time: %d ms\n", totalTime));
+        
+        return report.toString();
+    }
+    
+    // ========== UTILITY METHODS ==========
+    
+    /**
+     * Emergency stop - stops all motors and clears remaining steps
+     */
+    public void emergencyStop() {
+        if (aph != null) {
+            aph.stopRobot();
         }
         
-        if (positioningHelper.goToPosition(targetX, targetY, targetHeading, maxSpeed)) {
-            nextStep();
-            return true;
+        // Clear remaining steps
+        for (int i = currentStepIndex; i < steps.size(); i++) {
+            steps.get(i).failed = true;
+            steps.get(i).errorMessage = "Emergency stop";
         }
         
-        return false;
-    }
-    
-    /**
-     * Move robot to exact field position (no heading change)
-     * @param targetX Target X coordinate (inches)
-     * @param targetY Target Y coordinate (inches)
-     * @param maxSpeed Maximum movement speed
-     * @return true when position is reached
-     */
-    public boolean goToPosition(double targetX, double targetY, double maxSpeed) {
-        if (positioningHelper == null) {
-            telemetry.addData("Error", "Advanced positioning not initialized");
-            telemetry.update();
-            return true;
-        }
+        executionFailed = true;
+        lastErrorMessage = "Emergency stop activated";
         
-        return goToPosition(targetX, targetY, positioningHelper.getCurrentHeading(), maxSpeed);
+        telemetry.addData("AutoHelper", "EMERGENCY STOP ACTIVATED");
+        telemetry.update();
     }
     
     /**
-     * Rotate robot to exact heading using advanced positioning
-     * @param targetHeading Target heading (degrees)
-     * @param maxSpeed Maximum turn speed
-     * @return true when heading is reached
+     * Get the APH instance for direct access
      */
-    public boolean rotateToHeading(double targetHeading, double maxSpeed) {
-        if (positioningHelper == null) {
-            telemetry.addData("Error", "Advanced positioning not initialized");
-            telemetry.update();
-            return true;
-        }
-        
-        if (!stepComplete) {
-            stepTimer.reset();
-            stepComplete = true;
-        }
-        
-        if (positioningHelper.rotateToHeading(targetHeading, maxSpeed)) {
-            nextStep();
-            return true;
-        }
-        
-        return false;
+    public AdvancedPositioningHelper getPositioningHelper() {
+        return aph;
     }
     
     /**
-     * Set robot's current position (for calibration)
-     * @param x Current X position (inches)
-     * @param y Current Y position (inches)
-     * @param heading Current heading (degrees)
-     */
-    public void setCurrentPosition(double x, double y, double heading) {
-        if (positioningHelper != null) {
-            positioningHelper.resetPosition(x, y, heading);
-        }
-    }
-    
-    /**
-     * Get robot's current X position
-     * @return X position in inches
-     */
-    public double getCurrentX() {
-        return positioningHelper != null ? positioningHelper.getCurrentX() : 0.0;
-    }
-    
-    /**
-     * Get robot's current Y position
-     * @return Y position in inches
-     */
-    public double getCurrentY() {
-        return positioningHelper != null ? positioningHelper.getCurrentY() : 0.0;
-    }
-    
-    /**
-     * Get robot's current heading
-     * @return Heading in degrees
-     */
-    public double getCurrentHeading() {
-        return positioningHelper != null ? positioningHelper.getCurrentHeading() : 0.0;
-    }
-    
-    /**
-     * Get distance to target position
-     * @param targetX Target X coordinate
-     * @param targetY Target Y coordinate
-     * @return Distance in inches
-     */
-    public double getDistanceToTarget(double targetX, double targetY) {
-        return positioningHelper != null ? positioningHelper.getDistanceToTarget(targetX, targetY) : 0.0;
-    }
-    
-    /**
-     * Check if AprilTag positioning is available
-     * @return true if AprilTag fix is available
-     */
-    public boolean hasAprilTagFix() {
-        return positioningHelper != null && positioningHelper.hasAprilTagFix();
-    }
-    
-    /**
-     * Calibrate IMU with known heading
-     * @param knownHeading The robot's actual heading (degrees)
-     */
-    public void calibrateIMU(double knownHeading) {
-        if (positioningHelper != null) {
-            positioningHelper.calibrateIMU(knownHeading);
-        }
-    }
-    
-    /**
-     * Update positioning system (call this regularly when using advanced positioning)
-     */
-    public void updatePosition() {
-        if (positioningHelper != null) {
-            positioningHelper.updatePosition();
-        }
-    }
-    
-    // ========================================
-    // TELEMETRY FUNCTIONS
-    // ========================================
-    
-    /**
-     * Update telemetry with current status
-     */
-    public void updateTelemetry() {
-        telemetry.addData("AutoHelper Status", "Running");
-        telemetry.addData("Current Step", currentStep);
-        telemetry.addData("Step Complete", stepComplete);
-        telemetry.addData("Step Time", "%.2f", stepTimer.seconds());
-        telemetry.addData("Total Runtime", "%.2f", runtime.seconds());
-        
-        // Position data if available
-        if (positioningHelper != null) {
-            telemetry.addData("Position", "X:%.1f Y:%.1f H:%.1f°", 
-                    getCurrentX(), getCurrentY(), getCurrentHeading());
-            telemetry.addData("AprilTag Fix", hasAprilTagFix() ? "YES" : "NO");
-        }
-        
-        // Motor positions
-        telemetry.addData("Encoders", "LF:%d RF:%d LB:%d RB:%d",
-                leftFrontDrive.getCurrentPosition(),
-                rightFrontDrive.getCurrentPosition(),
-                leftBackDrive.getCurrentPosition(),
-                rightBackDrive.getCurrentPosition());
-        
-        // Motor powers
-        telemetry.addData("Powers", "LF:%.2f RF:%.2f LB:%.2f RB:%.2f",
-                leftFrontDrive.getPower(),
-                rightFrontDrive.getPower(),
-                leftBackDrive.getPower(),
-                rightBackDrive.getPower());
-        
-        // Update positioning system telemetry if available
-        if (positioningHelper != null) {
-            positioningHelper.updateTelemetry();
-        } else {
-            telemetry.update();
-        }
-    }
-    
-    /**
-     * Add custom telemetry data
-     */
-    public void addTelemetry(String caption, String format, Object... args) {
-        telemetry.addData(caption, format, args);
-    }
-    
-    /**
-     * Add custom telemetry data
-     */
-    public void addTelemetry(String caption, Object value) {
-        telemetry.addData(caption, value);
-    }
-    
-    // ========================================
-    // ADVANCED FUNCTIONS
-    // ========================================
-    
-    /**
-     * Drive using field-relative control (requires field relative drive system)
-     * @param seconds Duration to drive
-     * @param forward Forward power in field coordinates
-     * @param strafe Strafe power in field coordinates
-     * @param rotate Rotation power
-     * @return true when movement is complete
-     */
-    public boolean driveFieldRelativeFor(double seconds, double forward, double strafe, double rotate) {
-        if (fieldRelativeDrive == null) {
-            telemetry.addData("Error", "Field relative drive not initialized");
-            telemetry.update();
-            return true;
-        }
-        
-        if (!stepComplete) {
-            stepTimer.reset();
-            stepComplete = true;
-        }
-        
-        if (stepTimer.seconds() < seconds && opMode.opModeIsActive()) {
-            fieldRelativeDrive.driveFieldRelative(forward, strafe, rotate);
-            return false;
-        } else {
-            stopAllMotors();
-            nextStep();
-            return true;
-        }
-    }
-    
-    /**
-     * Check if OpMode is still active (safety check)
+     * Check if OpMode is still active (wrapper for convenience)
      */
     public boolean isActive() {
         return opMode.opModeIsActive();
     }
     
     /**
-     * Get motor by name for advanced users
+     * Sleep wrapper for convenience
      */
-    public DcMotor getMotor(String motorName) {
-        switch (motorName.toLowerCase()) {
-            case "leftfront":
-            case "left_front":
-            case "frontleft":
-                return leftFrontDrive;
-            case "rightfront":
-            case "right_front":
-            case "frontright":
-                return rightFrontDrive;
-            case "leftback":
-            case "left_back":
-            case "backleft":
-                return leftBackDrive;
-            case "rightback":
-            case "right_back":
-            case "backright":
-                return rightBackDrive;
-            default:
-                return null;
-        }
-    }
-    
-    /**
-     * Get reference to the basic mechanum drive system
-     */
-    public MechanumDrive getRobotDrive() {
-        return robotDrive;
-    }
-    
-    /**
-     * Get reference to the field relative drive system
-     */
-    public MechanumFieldRelative getFieldRelativeDrive() {
-        return fieldRelativeDrive;
-    }
-    
-    /**
-     * Get reference to the advanced positioning system
-     */
-    public AdvancedPositioningHelper getAdvancedPositioning() {
-        return positioningHelper;
-    }
-    
-    // ========================================
-    // ENCODER UTILITY METHODS (FTC BEST PRACTICES)
-    // ========================================
-    
-    /**
-     * Get encoder position in counts (ticks)
-     * @param motor Which motor encoder to read
-     * @return Position in encoder counts
-     */
-    public int getEncoderCounts(String motor) {
-        switch (motor.toLowerCase()) {
-            case "leftfront":
-            case "frontleft":
-                return leftFrontDrive.getCurrentPosition();
-            case "rightfront":
-            case "frontright":
-                return rightFrontDrive.getCurrentPosition();
-            case "leftback":
-            case "backleft":
-                return leftBackDrive.getCurrentPosition();
-            case "rightback":
-            case "backright":
-                return rightBackDrive.getCurrentPosition();
-            default:
-                return 0;
-        }
-    }
-    
-    /**
-     * Get encoder position in revolutions
-     * @param motor Which motor encoder to read
-     * @return Position in revolutions
-     */
-    public double getEncoderRevolutions(String motor) {
-        int counts = getEncoderCounts(motor);
-        return counts / COUNTS_PER_MOTOR_REV;
-    }
-    
-    /**
-     * Get encoder position in inches (linear distance)
-     * @param motor Which motor encoder to read
-     * @return Position in inches
-     */
-    public double getEncoderInches(String motor) {
-        int counts = getEncoderCounts(motor);
-        return counts / COUNTS_PER_INCH;
-    }
-    
-    /**
-     * Get encoder angle in degrees (0-360, normalized)
-     * @param motor Which motor encoder to read
-     * @return Angle in degrees (normalized to 0-360)
-     */
-    public double getEncoderAngle(String motor) {
-        double revolutions = getEncoderRevolutions(motor);
-        double angle = revolutions * 360.0;
-        return angle % 360.0;
-    }
-    
-    /**
-     * Get encoder angle in degrees (total, can exceed 360)
-     * @param motor Which motor encoder to read
-     * @return Total angle in degrees
-     */
-    public double getEncoderAngleTotal(String motor) {
-        double revolutions = getEncoderRevolutions(motor);
-        return revolutions * 360.0;
-    }
-    
-    /**
-     * Get all encoder positions formatted for telemetry
-     * @return Formatted string with all encoder data
-     */
-    public String getEncoderTelemetry() {
-        return String.format("LF:%d RF:%d LB:%d RB:%d", 
-            leftFrontDrive.getCurrentPosition(),
-            rightFrontDrive.getCurrentPosition(), 
-            leftBackDrive.getCurrentPosition(),
-            rightBackDrive.getCurrentPosition());
-    }
-    
-    /**
-     * Get encoder positions in inches for telemetry
-     * @return Formatted string with encoder distances
-     */
-    public String getEncoderDistances() {
-        return String.format("LF:%.1f\" RF:%.1f\" LB:%.1f\" RB:%.1f\"",
-            getEncoderInches("leftfront"),
-            getEncoderInches("rightfront"),
-            getEncoderInches("leftback"), 
-            getEncoderInches("rightback"));
-    }
-    
-    /**
-     * Cleanup resources (call at end of OpMode)
-     */
-    public void close() {
-        if (positioningHelper != null) {
-            positioningHelper.close();
-        }
+    public void sleep(long milliseconds) {
+        opMode.sleep(milliseconds);
     }
 }
