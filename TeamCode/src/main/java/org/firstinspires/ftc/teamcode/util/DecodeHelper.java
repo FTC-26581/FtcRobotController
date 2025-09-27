@@ -35,6 +35,7 @@ public class DecodeHelper {
     
     // Configuration constants
     private static final double SHOOTER_POWER = 0.75;
+    private static final double SHORT_SHOOTER_POWER = 0.55;
     private static final double FEED_POWER = 1.0;
     private static final double FEED_TIME = 0.3; // Time to run feed servos for one shot
     private static final double SHOT_INTERVAL = 1.5; // Minimum time between shots
@@ -45,6 +46,15 @@ public class DecodeHelper {
     private boolean isShooting = false;
     private double lastShotTime = 0;
     private boolean prevButtonState = false;
+    private boolean longRange = true;
+
+    private final ElapsedTime clock = new ElapsedTime(); // never reset after construction
+    private double shooterStartTime = Double.NEGATIVE_INFINITY;
+    private double feedStartTime   = Double.NEGATIVE_INFINITY;
+
+    // Mode-specific spinup (tune these!)
+    private static final double SPINUP_LONG  = 2.0;
+    private static final double SPINUP_SHORT = 1.2;  // adjust after testing
     
     /**
      * Constructor - Initialize the DecodeHelper
@@ -84,13 +94,11 @@ public class DecodeHelper {
      * Start the shooter motor
      */
     public void startShooter() {
-        shooter.setPower(SHOOTER_POWER);
+        shooter.setPower(longRange ? SHOOTER_POWER : SHORT_SHOOTER_POWER);
         shooterRunning = true;
+        shooterStartTime = clock.seconds();
     }
-    
-    /**
-     * Stop the shooter motor
-     */
+
     public void stopShooter() {
         shooter.setPower(0.0);
         shooterRunning = false;
@@ -111,13 +119,28 @@ public class DecodeHelper {
         feedServo1.setPower(0.0);
         feedServo2.setPower(0.0);
     }
+
+    public void setRangeLong(boolean enableLong) {
+        if (this.longRange != enableLong) {
+            this.longRange = enableLong;
+            if (shooterRunning) {
+                // Re-apply power and require fresh spin-up for the new mode
+                shooter.setPower(longRange ? SHOOTER_POWER : SHORT_SHOOTER_POWER);
+                shooterStartTime = clock.seconds();
+            }
+        } else {
+            this.longRange = enableLong;
+        }
+    }
     
     /**
      * Check if shooter is at speed and ready to fire
      * @return true if shooter has been running long enough to be at speed
      */
     public boolean isShooterReady() {
-        return shooterRunning && (timer.seconds() >= SHOOTER_SPINUP_TIME) && (timer.seconds() - lastShotTime >= SHOT_INTERVAL);
+        double t = clock.seconds();
+        double spinup = longRange ? SPINUP_LONG : SPINUP_SHORT;
+        return shooterRunning && (t - shooterStartTime >= spinup) && (t - lastShotTime >= SHOT_INTERVAL);
     }
     
     /**
@@ -126,24 +149,19 @@ public class DecodeHelper {
      * @return true if a shot was fired this cycle
      */
     public boolean fireSingleShot() {
-        double currentTime = timer.seconds();
-        
-        if (!isShooting && isShooterReady() && (currentTime - lastShotTime >= SHOT_INTERVAL)) {
-            // Start feeding
+        double t = clock.seconds();
+
+        if (!isShooting && isShooterReady()) {
             startFeedServos();
-            //telemetry.addData("stopped feed", !isShooting && isShooterReady() && (currentTime - lastShotTime >= SHOT_INTERVAL));
             isShooting = true;
-            lastShotTime = currentTime;
+            feedStartTime = t;
+            lastShotTime  = t;
             return true;
         }
-        
-        // Check if we should stop feeding
-        if (isShooting && (currentTime - lastShotTime >= FEED_TIME)) {
+        if (isShooting && (t - feedStartTime >= FEED_TIME)) {
             stopFeedServos();
-            //telemetry.addData("stopped feed", isShooting && (currentTime - lastShotTime >= FEED_TIME));
             isShooting = false;
         }
-        
         return false;
     }
     
@@ -155,33 +173,21 @@ public class DecodeHelper {
      * @param buttonPressed Current state of the shoot button
      * @return true if a shot was initiated this cycle
      */
-    public boolean handleShootButton(boolean buttonPressed) {
+    public boolean handleShootButton(boolean buttonPressed, boolean longRangeMode) {
+        setRangeLong(longRangeMode);  // <- applies power + spinup if changed while running
         boolean shotFired = false;
 
-        // Edge: button pressed -> start shooter & spinup timer
-        if (buttonPressed && !prevButtonState) {
-            if (!shooterRunning) {
-                startShooter();
-                timer.reset();
-            }
-        }
-
-        // Edge: button released -> stop shooter AND make sure feeds are stopped
-        if (!buttonPressed && prevButtonState) {
+        if (buttonPressed && !prevButtonState) {      // press edge
+            if (!shooterRunning) startShooter();      // stamps shooterStartTime
+        } else if (!buttonPressed && prevButtonState) { // release edge
             stopShooter();
-            // safety: guarantee feeds stop if we let go during a shot
-            if (isShooting) {
-                stopFeedServos();
-                isShooting = false;
-            }
+            if (isShooting) { stopFeedServos(); isShooting = false; }
         }
 
-        // Always service an in-flight shot so it can stop after FEED_TIME
         if (isShooting) {
-            fireSingleShot(); // this will stop the servos when time elapses
+            fireSingleShot();                         // let it finish FEED_TIME
         } else if (buttonPressed && isShooterReady()) {
-            // Only initiate a new shot when ready
-            shotFired = fireSingleShot(); // will start the feed and set isShooting
+            shotFired = fireSingleShot();
         }
 
         prevButtonState = buttonPressed;
@@ -195,58 +201,39 @@ public class DecodeHelper {
      * @param numShots Number of shots to fire
      * @param keepShooterRunning Whether to keep shooter running after shots complete
      */
-    public void autoShoot(int numShots, boolean keepShooterRunning) {
+    public void autoShoot(int numShots, boolean keepShooterRunning, boolean longRangeMode) {
         if (numShots <= 0) return;
-        
-        // Start shooter if not already running
-        if (!shooterRunning) {
-            startShooter();
-        }
-        
-        // Wait for shooter to spin up
-        ElapsedTime spinupTimer = new ElapsedTime();
-        while (spinupTimer.seconds() < SHOOTER_SPINUP_TIME) {
-            telemetry.addData("Shooter", "Spinning up... %4.1f", spinupTimer.seconds());
+        setRangeLong(longRangeMode);
+        if (!shooterRunning) startShooter();
+
+        // spin-up using the same readiness gate
+        while (!isShooterReady()) {
+            telemetry.addData("Shooter", "Spinning up...");
             telemetry.update();
         }
-        
-        // Fire the requested number of shots
         for (int i = 0; i < numShots; i++) {
-            telemetry.addData("Shooting", "Shot %d of %d", i + 1, numShots);
-            telemetry.update();
-            
-            // Feed artifact
             startFeedServos();
-            
-            // Wait for feed time
-            ElapsedTime feedTimer = new ElapsedTime();
-            while (feedTimer.seconds() < FEED_TIME) {
-                // Keep updating telemetry during feed
-                telemetry.addData("Feeding artifact", "%4.1f seconds", feedTimer.seconds());
+            double start = clock.seconds();
+            while (clock.seconds() - start < FEED_TIME) {
+                telemetry.addData("Feeding", "%.2fs", clock.seconds() - start);
                 telemetry.update();
             }
-            
-            // Stop feeding
             stopFeedServos();
-            
-            // Wait between shots (except for last shot)
+
             if (i < numShots - 1) {
-                ElapsedTime intervalTimer = new ElapsedTime();
-                while (intervalTimer.seconds() < SHOT_INTERVAL) {
-                    telemetry.addData("Shot interval", "%4.1f seconds", intervalTimer.seconds());
+                double w = clock.seconds();
+                while (clock.seconds() - w < SHOT_INTERVAL) {
+                    telemetry.addData("Interval", "%.2fs", clock.seconds() - w);
                     telemetry.update();
                 }
             }
+            lastShotTime = clock.seconds();
         }
-        
-        // Stop shooter if requested
-        if (!keepShooterRunning) {
-            stopShooter();
-        }
-        
+        if (!keepShooterRunning) stopShooter();
         telemetry.addData("Auto Shoot", "Complete - %d shots fired", numShots);
         telemetry.update();
     }
+
     
     /**
      * Manual shooter control for fine-tuning
@@ -311,9 +298,39 @@ public class DecodeHelper {
         telemetry.addData("Shooter Ready", isShooterReady() ? "Yes" : "No");
         telemetry.addData("Currently Shooting", isShooting() ? "Yes" : "No");
         telemetry.addData("Time Since Last Shot", "%.1f sec", getTimeSinceLastShot());
+        telemetry.addData("Mode", longRange ? "LONG" : "SHORT");
+        telemetry.addData("Spinup Needed", "%.1fs", longRange ? SPINUP_LONG : SPINUP_SHORT);
+
     }
     
     // ========== AAF (AUTONOMOUS ACTION FRAMEWORK) INTEGRATION ==========
+
+    public java.util.function.Supplier<Boolean> createNonBlockingShootAction(int numShots, boolean keepShooterRunning, boolean longRangeMode) {
+        return new java.util.function.Supplier<Boolean>() {
+            private int shotsFired = 0;
+            private boolean init = false;
+
+            @Override public Boolean get() {
+                if (!init) {
+                    setRangeLong(longRangeMode);
+                    if (!shooterRunning) startShooter();
+                    init = true;
+                    return false;
+                }
+                if (shotsFired >= numShots) {
+                    if (!keepShooterRunning) stopShooter();
+                    return true;
+                }
+                if (!isShooting && isShooterReady()) {
+                    fireSingleShot();
+                    shotsFired++;
+                } else if (isShooting) {
+                    fireSingleShot(); // allow to stop after FEED_TIME
+                }
+                return false;
+            }
+        };
+    }
     
     /**
      * Creates a Supplier<Boolean> for shooting that's compatible with AutoHelper.addStep()

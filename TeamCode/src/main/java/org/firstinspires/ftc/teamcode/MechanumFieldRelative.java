@@ -86,16 +86,16 @@ public class MechanumFieldRelative {
 
     public void dpadMove() {
         if (gamepad.dpad_up) {
-            axial = -0.2;
-        } else if (gamepad.dpad_down) {
             axial = 0.2;
+        } else if (gamepad.dpad_down) {
+            axial = -0.2;
         } else {
             axial = 0;
         }
         if (gamepad.dpad_right) {
-            lateral = -0.2;
-        } else if (gamepad.dpad_left) {
             lateral = 0.2;
+        } else if (gamepad.dpad_left) {
+            lateral = -0.2;
         } else {
             lateral = 0;
         }

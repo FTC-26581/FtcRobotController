@@ -143,15 +143,12 @@ public class BasicDrive25 extends LinearOpMode {
             // ========== DECODE HELPER CONTROLS ==========
             if (!emergencyStop) {
                 // Smart shooting with gamepad2.a (single shot on press, continuous when held)
-                decodeHelper.handleShootButton(gamepad2.a);
+                decodeHelper.handleShootButton(gamepad2.a, false);
+                decodeHelper.handleShootButton(gamepad2.y, true);
                 
                 // Manual shooter control with right trigger (overrides smart shooting)
                 if (gamepad2.right_trigger > 0.05) {
                     decodeHelper.setShooterPower(gamepad2.right_trigger * 0.9);
-                }
-
-                if(gamepad2.y){
-                    decodeHelper.setShooterPower(0.7);
                 }
                 
                 // Manual feed servo control with gamepad2.b (for testing/emergency)
