@@ -34,11 +34,11 @@ public class DecodeHelper {
     private Telemetry telemetry;
     
     // Configuration constants
-    private static final double SHOOTER_POWER = 0.65;
+    private static final double SHOOTER_POWER = 0.75;
     private static final double FEED_POWER = 1.0;
-    private static final double FEED_TIME = 1.0; // Time to run feed servos for one shot
-    private static final double SHOT_INTERVAL = 1.0; // Minimum time between shots
-    private static final double SHOOTER_SPINUP_TIME = 1.0; // Time for shooter to reach speed
+    private static final double FEED_TIME = 0.3; // Time to run feed servos for one shot
+    private static final double SHOT_INTERVAL = 1.5; // Minimum time between shots
+    private static final double SHOOTER_SPINUP_TIME = 2.0; // Time for shooter to reach speed
     
     // State variables
     private boolean shooterRunning = false;
@@ -100,8 +100,8 @@ public class DecodeHelper {
      * Start the feed servos to launch an artifact
      */
     private void startFeedServos() {
-        feedServo1.setPower(FEED_POWER);
-        feedServo2.setPower(-FEED_POWER);
+        feedServo1.setPower(-FEED_POWER);
+        feedServo2.setPower(FEED_POWER);
     }
     
     /**
@@ -131,6 +131,7 @@ public class DecodeHelper {
         if (!isShooting && isShooterReady() && (currentTime - lastShotTime >= SHOT_INTERVAL)) {
             // Start feeding
             startFeedServos();
+            //telemetry.addData("stopped feed", !isShooting && isShooterReady() && (currentTime - lastShotTime >= SHOT_INTERVAL));
             isShooting = true;
             lastShotTime = currentTime;
             return true;
@@ -139,6 +140,7 @@ public class DecodeHelper {
         // Check if we should stop feeding
         if (isShooting && (currentTime - lastShotTime >= FEED_TIME)) {
             stopFeedServos();
+            //telemetry.addData("stopped feed", isShooting && (currentTime - lastShotTime >= FEED_TIME));
             isShooting = false;
         }
         
@@ -155,26 +157,33 @@ public class DecodeHelper {
      */
     public boolean handleShootButton(boolean buttonPressed) {
         boolean shotFired = false;
-        
-        // Start shooter when button is first pressed
+
+        // Edge: button pressed -> start shooter & spinup timer
         if (buttonPressed && !prevButtonState) {
             if (!shooterRunning) {
                 startShooter();
-                timer.reset(); // Reset timer for spinup tracking
+                timer.reset();
             }
         }
-        
-        // Stop shooter when button is released
+
+        // Edge: button released -> stop shooter AND make sure feeds are stopped
         if (!buttonPressed && prevButtonState) {
             stopShooter();
+            // safety: guarantee feeds stop if we let go during a shot
+            if (isShooting) {
+                stopFeedServos();
+                isShooting = false;
+            }
         }
-        
-        // Fire shots while button is held and shooter is ready
-        if (buttonPressed && shooterRunning) {
-            fireSingleShot();
-            shotFired = true;
+
+        // Always service an in-flight shot so it can stop after FEED_TIME
+        if (isShooting) {
+            fireSingleShot(); // this will stop the servos when time elapses
+        } else if (buttonPressed && isShooterReady()) {
+            // Only initiate a new shot when ready
+            shotFired = fireSingleShot(); // will start the feed and set isShooting
         }
-        
+
         prevButtonState = buttonPressed;
         return shotFired;
     }

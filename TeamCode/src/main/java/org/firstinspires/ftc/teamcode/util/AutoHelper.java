@@ -386,6 +386,152 @@ public class AutoHelper {
         executionFailed = false;
         return this;
     }
+
+    // ==========================
+    // MOVE-BY-INCHES: FLUENT API
+    // ==========================
+
+    /**
+     * Move N inches in a ROBOT-relative direction (0° = forward, +90° = right).
+     * Keeps current heading by default.
+     */
+    public AutoHelper moveInchesRobot(double inches,
+                                    double robotDirectionDeg,
+                                    String description) {
+        return moveInchesRobot(inches, robotDirectionDeg, defaultPower, (long)defaultTimeout, /*holdHeading=*/true, description);
+    }
+
+    public AutoHelper moveInchesRobot(double inches,
+                                    double robotDirectionDeg,
+                                    double power,
+                                    long timeoutMs,
+                                    boolean holdHeading,
+                                    String description) {
+        return addStep(description, () ->
+            executeMoveInchesRobot(inches, robotDirectionDeg, power, timeoutMs, holdHeading)
+        );
+    }
+
+    /**
+     * Move N inches in a FIELD-relative direction (0° = +Y toward Blue, +90° = +X toward audience).
+     * By default, holds the current heading while translating.
+     */
+    public AutoHelper moveInchesField(double inches,
+                                    double fieldDirectionDeg,
+                                    String description) {
+        return moveInchesField(inches, fieldDirectionDeg, aph != null ? aph.getCurrentHeading() : 0.0,
+                defaultPower, (long)defaultTimeout, description);
+    }
+
+    public AutoHelper moveInchesField(double inches,
+                                    double fieldDirectionDeg,
+                                    double targetHeading,
+                                    double power,
+                                    long timeoutMs,
+                                    String description) {
+        return addStep(description, () ->
+            executeMoveInchesField(inches, fieldDirectionDeg, targetHeading, power, timeoutMs)
+        );
+    }
+
+    /**
+     * Cardinal robot-frame moves (FORWARD/BACKWARD/LEFT/RIGHT), holding heading.
+     */
+    public AutoHelper moveCardinal(AdvancedPositioningHelper.MoveDir dir,
+                                double inches,
+                                String description) {
+        return moveCardinal(dir, inches, defaultPower, (long)defaultTimeout, description);
+    }
+
+    public AutoHelper moveCardinal(AdvancedPositioningHelper.MoveDir dir,
+                                double inches,
+                                double power,
+                                long timeoutMs,
+                                String description) {
+        return addStep(description, () ->
+            executeMoveCardinal(dir, inches, power, timeoutMs)
+        );
+    }
+
+    // Convenience sugar
+    public AutoHelper forward(double inches, String description) {
+        return moveCardinal(AdvancedPositioningHelper.MoveDir.FORWARD, inches, description);
+    }
+    public AutoHelper back(double inches, String description) {
+        return moveCardinal(AdvancedPositioningHelper.MoveDir.BACKWARD, inches, description);
+    }
+    public AutoHelper strafeRight(double inches, String description) {
+        return moveCardinal(AdvancedPositioningHelper.MoveDir.RIGHT, inches, description);
+    }
+    public AutoHelper strafeLeft(double inches, String description) {
+        return moveCardinal(AdvancedPositioningHelper.MoveDir.LEFT, inches, description);
+    }
+
+    // ==================================
+    // MOVE-BY-INCHES: EXECUTION HELPERS
+    // ==================================
+
+    private boolean executeMoveInchesRobot(double inches,
+                                        double robotDirectionDeg,
+                                        double power,
+                                        long timeoutMs,
+                                        boolean holdHeading) {
+        if (aph == null) {
+            telemetry.addData("ERROR", "APH not initialized");
+            return false;
+        }
+        // Convert ms → s for APH method
+        double timeoutSec = Math.max(0.1, timeoutMs / 1000.0);
+
+        boolean ok = aph.moveInchesRobot(inches, robotDirectionDeg, clamp01(power), timeoutSec, holdHeading);
+
+        if (!ok) {
+            telemetry.addData("moveInchesRobot", "Failed/Timeout: %.1f in @ %.0f° (%.1fs)",
+                    inches, robotDirectionDeg, timeoutSec);
+        }
+        return ok;
+    }
+
+    private boolean executeMoveInchesField(double inches,
+                                        double fieldDirectionDeg,
+                                        double targetHeading,
+                                        double power,
+                                        long timeoutMs) {
+        if (aph == null) {
+            telemetry.addData("ERROR", "APH not initialized");
+            return false;
+        }
+        double timeoutSec = Math.max(0.1, timeoutMs / 1000.0);
+
+        boolean ok = aph.moveInchesField(inches, fieldDirectionDeg, targetHeading, clamp01(power), timeoutSec);
+
+        if (!ok) {
+            telemetry.addData("moveInchesField", "Failed/Timeout: %.1f in @ field %.0f° → H=%.0f° (%.1fs)",
+                    inches, fieldDirectionDeg, targetHeading, timeoutSec);
+        }
+        return ok;
+    }
+
+    private boolean executeMoveCardinal(AdvancedPositioningHelper.MoveDir dir,
+                                        double inches,
+                                        double power,
+                                        long timeoutMs) {
+        if (aph == null) {
+            telemetry.addData("ERROR", "APH not initialized");
+            return false;
+        }
+        double timeoutSec = Math.max(0.1, timeoutMs / 1000.0);
+
+        boolean ok = aph.moveCardinalRobot(dir, inches, clamp01(power), timeoutSec);
+
+        if (!ok) {
+            telemetry.addData("moveCardinal", "Failed/Timeout: %s %.1f in (%.1fs)", dir, inches, timeoutSec);
+        }
+        return ok;
+    }
+
+    // Small utility to keep power sane
+    private double clamp01(double v) { return Math.max(0.0, Math.min(1.0, v)); }
     
     // ========== MOVEMENT EXECUTION METHODS ==========
     

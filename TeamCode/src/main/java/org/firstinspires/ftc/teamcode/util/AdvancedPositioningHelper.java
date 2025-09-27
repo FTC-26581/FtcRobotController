@@ -1177,6 +1177,147 @@ public class AdvancedPositioningHelper {
         
         return false;
     }
+
+    /** Simple cardinal directions in the ROBOT frame. */
+    public enum MoveDir {
+        FORWARD, BACKWARD, LEFT, RIGHT
+    }
+
+    /**
+     * Move a given distance in the ROBOT frame.
+     * Angle convention (robot-relative): 0° = forward, +90° = right, -90° = left, 180° = backward.
+     *
+     * @param inches               distance to move (>= 0)
+     * @param robotDirectionDeg    direction in robot frame (degrees, see convention above)
+     * @param maxSpeed             max drive speed (0..1)
+     * @param timeoutSeconds       safety timeout in seconds
+     * @param holdHeading          if true, robot keeps its current heading
+     * @return true if reached target within tolerance before timeout
+     */
+    public boolean moveInchesRobot(double inches,
+                                double robotDirectionDeg,
+                                double maxSpeed,
+                                double timeoutSeconds,
+                                boolean holdHeading) {
+        // Current pose becomes the reference
+        updatePosition();
+        double startX = currentX;
+        double startY = currentY;
+        double startHeading = currentHeading;
+
+        // Convert robot-relative to field-relative direction
+        // Field convention in this class: 0° = +Y (toward Blue), +90° = +X (toward audience)
+        // Robot-relative 0° (forward) is aligned with current heading.
+        double fieldDirectionDeg = normalizeAngle(robotDirectionDeg + startHeading);
+
+        // Compute target in field frame
+        double rad = Math.toRadians(fieldDirectionDeg);
+        double targetX = startX + inches * Math.sin(rad); // note: X uses sin (matches goToPosition usage)
+        double targetY = startY + inches * Math.cos(rad); // note: Y uses cos
+
+        // Keep inside field bounds (just in case)
+        double[] clamped = clampToField(targetX, targetY);
+        targetX = clamped[0];
+        targetY = clamped[1];
+
+        double targetHeading = holdHeading ? startHeading : currentHeading;
+
+        return driveToTargetWithTimeout(targetX, targetY, targetHeading, maxSpeed, timeoutSeconds);
+    }
+
+    /**
+     * Move a given distance in the FIELD frame.
+     * Field convention: 0° = +Y (toward Blue), +90° = +X (toward audience).
+     *
+     * @param inches             distance to move (>= 0)
+     * @param fieldDirectionDeg  absolute field direction (degrees, see convention)
+     * @param targetHeading      heading to hold while moving (use getCurrentHeading() to maintain)
+     * @param maxSpeed           max drive speed (0..1)
+     * @param timeoutSeconds     safety timeout in seconds
+     * @return true if reached target within tolerance before timeout
+     */
+    public boolean moveInchesField(double inches,
+                                double fieldDirectionDeg,
+                                double targetHeading,
+                                double maxSpeed,
+                                double timeoutSeconds) {
+        updatePosition();
+        double startX = currentX;
+        double startY = currentY;
+
+        double rad = Math.toRadians(normalizeAngle(fieldDirectionDeg));
+        double targetX = startX + inches * Math.sin(rad);
+        double targetY = startY + inches * Math.cos(rad);
+
+        double[] clamped = clampToField(targetX, targetY);
+        targetX = clamped[0];
+        targetY = clamped[1];
+
+        return driveToTargetWithTimeout(targetX, targetY, targetHeading, maxSpeed, timeoutSeconds);
+    }
+
+    /**
+     * Convenience: move in a cardinal direction in the ROBOT frame.
+     * FORWARD/BACKWARD translate; LEFT/RIGHT strafe.
+     *
+     * @param dir            FORWARD, BACKWARD, LEFT, RIGHT (robot frame)
+     * @param inches         distance to move (>= 0)
+     * @param maxSpeed       max drive speed (0..1)
+     * @param timeoutSeconds safety timeout
+     * @return true if reached target within tolerance before timeout
+     */
+    public boolean moveCardinalRobot(MoveDir dir,
+                                    double inches,
+                                    double maxSpeed,
+                                    double timeoutSeconds) {
+        double angleDeg;
+        switch (dir) {
+            case FORWARD:  angleDeg = 0;    break;
+            case BACKWARD: angleDeg = 180;  break;
+            case RIGHT:    angleDeg = 90;   break;  // positive strafe in your kinematics
+            case LEFT:     angleDeg = -90;  break;
+            default:       angleDeg = 0;
+        }
+        // Hold current heading by default in a cardinal move
+        return moveInchesRobot(inches, angleDeg, maxSpeed, timeoutSeconds, true);
+    }
+
+    /**
+     * Core loop: drives to (targetX, targetY, targetHeading) using goToPosition(), with timeout+settle window.
+     */
+    private boolean driveToTargetWithTimeout(double targetX,
+                                            double targetY,
+                                            double targetHeading,
+                                            double maxSpeed,
+                                            double timeoutSeconds) {
+        ElapsedTime timer = new ElapsedTime();
+        ElapsedTime settle = new ElapsedTime();
+        boolean inside = false;
+
+        // Small settle time ensures we truly arrived (helps with oscillation)
+        final double SETTLE_REQUIRED_S = 0.15;
+
+        while (opMode.opModeIsActive() && timer.seconds() < timeoutSeconds) {
+            boolean reached = goToPosition(targetX, targetY, targetHeading, maxSpeed);
+
+            // Track continuous time inside tolerance box
+            if (reached) {
+                if (!inside) { inside = true; settle.reset(); }
+                if (settle.seconds() >= SETTLE_REQUIRED_S) {
+                    stopMotors();
+                    return true;
+                }
+            } else {
+                inside = false; // left the tolerance box, reset settle window
+            }
+        }
+
+        // Timeout: stop and report failure
+        stopMotors();
+        telemetry.addData("moveInches", "Timed out (%.2fs). Target=(%.1f,%.1f,%.0f°)",
+                timeoutSeconds, targetX, targetY, targetHeading);
+        return false;
+    }
     
     /**
      * Rotate robot to specific heading

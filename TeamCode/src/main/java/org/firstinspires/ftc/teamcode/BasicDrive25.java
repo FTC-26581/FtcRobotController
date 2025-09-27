@@ -146,13 +146,17 @@ public class BasicDrive25 extends LinearOpMode {
                 decodeHelper.handleShootButton(gamepad2.a);
                 
                 // Manual shooter control with right trigger (overrides smart shooting)
-                if (gamepad2.right_trigger > 0.1) {
-                    decodeHelper.setShooterPower(gamepad2.right_trigger);
+                if (gamepad2.right_trigger > 0.05) {
+                    decodeHelper.setShooterPower(gamepad2.right_trigger * 0.9);
+                }
+
+                if(gamepad2.y){
+                    decodeHelper.setShooterPower(0.7);
                 }
                 
                 // Manual feed servo control with gamepad2.b (for testing/emergency)
                 if (gamepad2.b) {
-                    decodeHelper.setFeedPower(1.0);
+                    decodeHelper.setFeedPower(-1.0);
                 } else if (!decodeHelper.isShooting()) {
                     // Only stop feed if DecodeHelper isn't currently shooting
                     decodeHelper.setFeedPower(0.0);
@@ -300,66 +304,19 @@ public class BasicDrive25 extends LinearOpMode {
         
         switch (currentSemiAuto) {
             case "MOVE_TO_BASKET_AND_SHOOT":
-                // Example: Move forward for 1 second, then shoot
-                if (elapsed < 1.0) {
-                    if (fieldRelativeMode) {
-                        drive.driveFieldRelative(0.5, 0, 0); // Move toward basket
-                    } else {
-                        drive.drive(0.5, 0, 0);
-                    }
-                } else if (elapsed < 2.0) {
-                    drive.drive(0, 0, 0); // Stop
-                    decodeHelper.handleShootButton(true); // Start shooting
-                } else if (elapsed < 4.0) {
-                    // Continue shooting for 2 seconds
-                    decodeHelper.handleShootButton(true);
-                } else {
-                    completed = true;
-                }
-                break;
+                
                 
             case "PRECISION_ALIGN":
-                // Slow precise movement for 2 seconds
-                if (elapsed < 2.0) {
-                    double forward = -gamepad1.right_stick_y * 0.3; // 30% speed
-                    double strafe = gamepad1.right_stick_x * 0.3;
-                    double rotate = gamepad1.left_stick_x * 0.3;
-                    drive.drive(forward, strafe, rotate);
-                } else {
-                    completed = true;
-                }
-                break;
+                
                 
             case "QUICK_RETREAT":
-                // Move backward quickly for 1 second
-                if (elapsed < 1.0) {
-                    if (fieldRelativeMode) {
-                        drive.driveFieldRelative(-0.8, 0, 0);
-                    } else {
-                        drive.drive(-0.8, 0, 0);
-                    }
-                } else {
-                    completed = true;
-                }
-                break;
+                
                 
             case "ROTATE_TO_ZERO":
-                // Simple rotation toward 0 degrees (approximate)
-                if (elapsed < 2.0) {
-                    drive.drive(0, 0, 0.5); // Rotate right
-                } else {
-                    completed = true;
-                }
-                break;
+                
                 
             case "WALL_ALIGN":
-                // Strafe left for wall alignment
-                if (elapsed < 1.5) {
-                    drive.drive(0, -0.6, 0);
-                } else {
-                    completed = true;
-                }
-                break;
+               
                 
             default:
                 completed = true;
@@ -435,17 +392,25 @@ public class BasicDrive25 extends LinearOpMode {
                gamepad.right_trigger > TRIGGER_THRESHOLD;
     }
     
+    private boolean isNewPress(boolean current, boolean previous) {
+        return current && !previous; // true only when the button was just pressed
+    }
+
     private boolean hasButtonChanged(Gamepad current, Gamepad previous) {
-        return current.left_bumper != previous.left_bumper ||
-               current.right_bumper != previous.right_bumper ||
-               current.left_stick_button != previous.left_stick_button ||
-               current.right_stick_button != previous.right_stick_button ||
-               current.dpad_up != previous.dpad_up ||
-               current.dpad_down != previous.dpad_down ||
-               current.dpad_left != previous.dpad_left ||
-               current.dpad_right != previous.dpad_right ||
-               current.start != previous.start ||
-               current.back != previous.back;
+        return isNewPress(current.left_bumper, previous.left_bumper) ||
+            isNewPress(current.right_bumper, previous.right_bumper) ||
+            isNewPress(current.left_stick_button, previous.left_stick_button) ||
+            isNewPress(current.right_stick_button, previous.right_stick_button) ||
+            isNewPress(current.dpad_up, previous.dpad_up) ||
+            isNewPress(current.dpad_down, previous.dpad_down) ||
+            isNewPress(current.dpad_left, previous.dpad_left) ||
+            isNewPress(current.dpad_right, previous.dpad_right) ||
+            isNewPress(current.start, previous.start) ||
+            isNewPress(current.back, previous.back) ||
+            isNewPress(current.x, previous.x) ||
+            isNewPress(current.y, previous.y) ||
+            isNewPress(current.a, previous.a) ||
+            isNewPress(current.b, previous.b);
     }
 }
 
