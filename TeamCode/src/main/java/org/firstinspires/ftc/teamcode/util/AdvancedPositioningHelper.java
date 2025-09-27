@@ -1173,7 +1173,18 @@ public class AdvancedPositioningHelper {
         double strafe = drivePower * Math.sin(Math.toRadians(robotAngleToTarget));
         
         // Apply movement
-        setMechanumPowers(forward, strafe, turnPower);
+        // DIRECTION FIX OPTION 3: If forward/backward are reversed, negate the forward component:
+        setMechanumPowers(forward, strafe, turnPower);  // TO FIX: Change to (-forward, strafe, turnPower)
+        
+        // Debug telemetry for movement troubleshooting
+        telemetry.addData("=== MOVEMENT DEBUG ===", "");
+        telemetry.addData("Target", String.format("(%.1f, %.1f, %.0f°)", targetX, targetY, targetHeading));
+        telemetry.addData("Current", String.format("(%.1f, %.1f, %.0f°)", currentX, currentY, currentHeading));
+        telemetry.addData("Delta", String.format("(%.1f, %.1f)", deltaX, deltaY));
+        telemetry.addData("Distance", String.format("%.1f\"", distanceToTarget));
+        telemetry.addData("Field Angle", String.format("%.1f°", fieldAngleToTarget));
+        telemetry.addData("Robot Angle", String.format("%.1f°", robotAngleToTarget));
+        telemetry.addData("Powers", String.format("F:%.2f S:%.2f T:%.2f", forward, strafe, turnPower));
         
         return false;
     }
@@ -1271,12 +1282,13 @@ public class AdvancedPositioningHelper {
                                     double maxSpeed,
                                     double timeoutSeconds) {
         double angleDeg;
+        // DIRECTION FIX OPTION 1: If forward/backward are reversed, swap these angle values:
         switch (dir) {
-            case FORWARD:  angleDeg = 0;    break;
-            case BACKWARD: angleDeg = 180;  break;
+            case FORWARD:  angleDeg = 0;    break;  // TO FIX: Change to 180 (swap with BACKWARD)
+            case BACKWARD: angleDeg = 180;  break;  // TO FIX: Change to 0 (swap with FORWARD)
             case RIGHT:    angleDeg = 90;   break;  // positive strafe in your kinematics
             case LEFT:     angleDeg = -90;  break;
-            default:       angleDeg = 0;
+            default:       angleDeg = 0;            // TO FIX: Change to 180 if you swap FORWARD
         }
         // Hold current heading by default in a cardinal move
         return moveInchesRobot(inches, angleDeg, maxSpeed, timeoutSeconds, true);

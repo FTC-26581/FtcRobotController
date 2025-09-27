@@ -3,6 +3,21 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
+/**
+ * THREE OPTIONS TO FIX FORWARD/BACKWARD DIRECTION IF REVERSED:
+ * 
+ * OPTION 1 (RECOMMENDED): In AdvancedPositioningHelper.java, swap angles in moveCardinalRobot():
+ *   - Change FORWARD from 0° to 180°
+ *   - Change BACKWARD from 180° to 0°
+ * 
+ * OPTION 2: In this file (MechanumDrive.java), flip ALL motor directions:
+ *   - Change all REVERSE to FORWARD and all FORWARD to REVERSE
+ * 
+ * OPTION 3: In AdvancedPositioningHelper.java goToPosition(), negate forward:
+ *   - Change setMechanumPowers(forward, strafe, turnPower) to setMechanumPowers(-forward, strafe, turnPower)
+ * 
+ * See comments marked "TO FIX:" throughout the code for exact line changes.
+ */
 public class MechanumDrive {
     private static final double SLOW_DRIVE_SCALE = 1.0 / 3.0;
 
@@ -31,10 +46,12 @@ public class MechanumDrive {
         leftBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightBackDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightBackDrive.setDirection(DcMotor.Direction.REVERSE);
+        // DIRECTION FIX OPTION 2: If forward/backward are reversed, flip ALL motor directions:
+        // Change REVERSE to FORWARD and FORWARD to REVERSE on all motors
+        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);   // TO FIX: Change to FORWARD
+        leftBackDrive.setDirection(DcMotor.Direction.REVERSE);    // TO FIX: Change to FORWARD
+        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);  // TO FIX: Change to REVERSE
+        rightBackDrive.setDirection(DcMotor.Direction.REVERSE);   // TO FIX: Change to REVERSE
     }
 
     public void toggleSlowDrive() {

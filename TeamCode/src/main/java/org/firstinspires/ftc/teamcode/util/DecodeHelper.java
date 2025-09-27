@@ -33,12 +33,13 @@ public class DecodeHelper {
     private ElapsedTime timer;
     private Telemetry telemetry;
     
-    // Configuration constants
-    private static final double SHOOTER_POWER = 0.75;
-    private static final double SHORT_SHOOTER_POWER = 0.55;
+    // Configuration constants (optimized for RS-555 motor: 6,000 RPM no-load)
+    private static final double SHOOTER_POWER = 0.75;    // Long range: ~4500 RPM (75% of 6000 RPM)
+    private static final double SHORT_SHOOTER_POWER = 0.55; // Short range: ~3300 RPM (55% of 6000 RPM)
     private static final double FEED_POWER = 1.0;
     private static final double FEED_TIME = 0.3; // Time to run feed servos for one shot
-    private static final double SHOT_INTERVAL = 1.5; // Minimum time between shots
+    private static final double SHOT_INTERVAL_LONG = 1.5; // Minimum time between long range shots
+    private static final double SHOT_INTERVAL_SHORT = 1.2; // Minimum time between short range shots (faster for closer shots)
     private static final double SHOOTER_SPINUP_TIME = 2.0; // Time for shooter to reach speed
     
     // State variables
@@ -51,10 +52,105 @@ public class DecodeHelper {
     private final ElapsedTime clock = new ElapsedTime(); // never reset after construction
     private double shooterStartTime = Double.NEGATIVE_INFINITY;
     private double feedStartTime   = Double.NEGATIVE_INFINITY;
+    
+    // RPM tracking variables  
+    private int lastEncoderPosition = 0;
+    private double lastRpmCheckTime = 0;
+    private double currentRPM = 0;
+    private double lastStableRpmTime = 0;
+    private boolean rpmIsStable = false;
+    private static final double COUNTS_PER_REV = 28.0; // RS-555 motor: 28 PPR (Pulses Per Revolution) at output shaft
 
     // Mode-specific spinup (tune these!)
     private static final double SPINUP_LONG  = 2.0;
     private static final double SPINUP_SHORT = 1.2;  // adjust after testing
+    
+    // RPM-based smart spinup constants (based on RS-555 motor specs: 6,000 RPM no-load, 28 PPR encoder)
+    private static final double TARGET_RPM_LONG = 4500;   // Target RPM for long range shots (75% of max)
+    private static final double TARGET_RPM_SHORT = 3300;  // Target RPM for short range shots (55% of max)
+    private static final double RPM_TOLERANCE = 75;       // RPM within this range considered "ready" (wider for high-speed motor)
+    private static final double RPM_STABILITY_TIME = 0.25; // Time RPM must be stable before ready (shorter for fast motor)
+    private static final double MAX_SPINUP_TIME = 3.0;    // Fallback timeout for safety (shorter for fast motor)
+    private static final boolean USE_RPM_SPINUP = true;   // Enable/disable RPM-based spinup
+    
+    /**
+     * Get the appropriate shot interval based on current range mode
+     * @return shot interval in seconds for current mode
+     */
+    private double getCurrentShotInterval() {
+        return longRange ? SHOT_INTERVAL_LONG : SHOT_INTERVAL_SHORT;
+    }
+    
+    /**
+     * Get target RPM for current range mode
+     * @return target RPM for current mode
+     */
+    private double getTargetRPM() {
+        return longRange ? TARGET_RPM_LONG : TARGET_RPM_SHORT;
+    }
+    
+    /**
+     * Update RPM calculation and stability tracking
+     * Call this regularly (every loop) when shooter is running
+     */
+    private void updateRPM() {
+        if (!shooterRunning) {
+            currentRPM = 0;
+            rpmIsStable = false;
+            return;
+        }
+        
+        double currentTime = clock.seconds();
+        int currentPosition = shooter.getCurrentPosition();
+        
+        // Calculate RPM if enough time has passed (at least 0.1 seconds for accuracy)
+        if (currentTime - lastRpmCheckTime >= 0.1) {
+            double deltaTime = currentTime - lastRpmCheckTime;
+            int deltaPosition = currentPosition - lastEncoderPosition;
+            
+            // RPM = (encoder counts / time) * (60 seconds/minute) / (counts per revolution)
+            currentRPM = Math.abs((deltaPosition / deltaTime) * 60.0 / COUNTS_PER_REV);
+            
+            // Update tracking variables
+            lastRpmCheckTime = currentTime;
+            lastEncoderPosition = currentPosition;
+            
+            // Check if RPM is stable (within tolerance of target)
+            double targetRpm = getTargetRPM();
+            boolean withinTolerance = Math.abs(currentRPM - targetRpm) <= RPM_TOLERANCE;
+            
+            if (withinTolerance) {
+                if (!rpmIsStable) {
+                    // Just entered stable range
+                    lastStableRpmTime = currentTime;
+                    rpmIsStable = true;
+                }
+            } else {
+                // Left stable range
+                rpmIsStable = false;
+            }
+        }
+    }
+    
+    /**
+     * Check if shooter RPM is ready for firing
+     * @return true if RPM is at target and stable for required time
+     */
+    private boolean isRPMReady() {
+        if (!USE_RPM_SPINUP || !shooterRunning) return false;
+        
+        updateRPM(); // Update RPM calculation
+        
+        double currentTime = clock.seconds();
+        
+        // Safety timeout - fall back to time-based if taking too long
+        if (currentTime - shooterStartTime > MAX_SPINUP_TIME) {
+            return true;
+        }
+        
+        // Check if RPM is stable for required time
+        return rpmIsStable && (currentTime - lastStableRpmTime >= RPM_STABILITY_TIME);
+    }
     
     /**
      * Constructor - Initialize the DecodeHelper
@@ -97,6 +193,12 @@ public class DecodeHelper {
         shooter.setPower(longRange ? SHOOTER_POWER : SHORT_SHOOTER_POWER);
         shooterRunning = true;
         shooterStartTime = clock.seconds();
+        
+        // Reset RPM tracking
+        lastEncoderPosition = shooter.getCurrentPosition();
+        lastRpmCheckTime = shooterStartTime;
+        currentRPM = 0;
+        rpmIsStable = false;
     }
 
     public void stopShooter() {
@@ -127,6 +229,12 @@ public class DecodeHelper {
                 // Re-apply power and require fresh spin-up for the new mode
                 shooter.setPower(longRange ? SHOOTER_POWER : SHORT_SHOOTER_POWER);
                 shooterStartTime = clock.seconds();
+                
+                // Reset RPM tracking for new target
+                lastEncoderPosition = shooter.getCurrentPosition();
+                lastRpmCheckTime = shooterStartTime;
+                currentRPM = 0;
+                rpmIsStable = false;
             }
         } else {
             this.longRange = enableLong;
@@ -139,8 +247,21 @@ public class DecodeHelper {
      */
     public boolean isShooterReady() {
         double t = clock.seconds();
-        double spinup = longRange ? SPINUP_LONG : SPINUP_SHORT;
-        return shooterRunning && (t - shooterStartTime >= spinup) && (t - lastShotTime >= SHOT_INTERVAL);
+        double shotInterval = getCurrentShotInterval();
+        
+        // Check shot interval timing
+        boolean intervalReady = (t - lastShotTime >= shotInterval);
+        
+        // Use RPM-based spinup if enabled, otherwise fall back to time-based
+        boolean spinupReady;
+        if (USE_RPM_SPINUP) {
+            spinupReady = isRPMReady();
+        } else {
+            double spinup = longRange ? SPINUP_LONG : SPINUP_SHORT;
+            spinupReady = (t - shooterStartTime >= spinup);
+        }
+        
+        return shooterRunning && spinupReady && intervalReady;
     }
     
     /**
@@ -222,8 +343,9 @@ public class DecodeHelper {
 
             if (i < numShots - 1) {
                 double w = clock.seconds();
-                while (clock.seconds() - w < SHOT_INTERVAL) {
-                    telemetry.addData("Interval", "%.2fs", clock.seconds() - w);
+                double shotInterval = getCurrentShotInterval();
+                while (clock.seconds() - w < shotInterval) {
+                    telemetry.addData("Interval", "%.2fs (%.1fs required)", clock.seconds() - w, shotInterval);
                     telemetry.update();
                 }
             }
@@ -290,17 +412,78 @@ public class DecodeHelper {
     }
     
     /**
+     * Get current shooter RPM
+     * @return current measured RPM
+     */
+    public double getCurrentRPM() {
+        updateRPM(); // Ensure RPM is current
+        return currentRPM;
+    }
+    
+    /**
+     * Get target RPM for current mode
+     * @return target RPM for current range mode
+     */
+    public double getCurrentTargetRPM() {
+        return getTargetRPM();
+    }
+    
+    /**
+     * Check if RPM is stable and at target
+     * @return true if RPM is stable within tolerance
+     */
+    public boolean isRPMStable() {
+        updateRPM(); // Ensure RPM is current
+        return rpmIsStable;
+    }
+    
+    /**
      * Update telemetry with current status
      * Call this in your main loop to see DecodeHelper status
      */
     public void updateTelemetry() {
-        telemetry.addData("Shooter Power", "%.2f", getShooterPower());
-        telemetry.addData("Shooter Ready", isShooterReady() ? "Yes" : "No");
-        telemetry.addData("Currently Shooting", isShooting() ? "Yes" : "No");
-        telemetry.addData("Time Since Last Shot", "%.1f sec", getTimeSinceLastShot());
-        telemetry.addData("Mode", longRange ? "LONG" : "SHORT");
-        telemetry.addData("Spinup Needed", "%.1fs", longRange ? SPINUP_LONG : SPINUP_SHORT);
-
+        double currentPower = getShooterPower();
+        double targetPower = longRange ? SHOOTER_POWER : SHORT_SHOOTER_POWER;
+        double spinupTime = longRange ? SPINUP_LONG : SPINUP_SHORT;
+        double shotInterval = getCurrentShotInterval();
+        
+        telemetry.addData("=== SHOOTER STATUS ===", "");
+        telemetry.addData("Mode", "%s RANGE", longRange ? "LONG" : "SHORT");
+        telemetry.addData("Power", "%.2f / %.2f (current/target)", currentPower, targetPower);
+        telemetry.addData("Shooter Ready", isShooterReady() ? "✓ READY" : "⏳ Not Ready");
+        telemetry.addData("Currently Shooting", isShooting() ? "🔥 FIRING" : "⏸ Idle");
+        
+        telemetry.addData("=== RPM STATUS ===", "");
+        if (USE_RPM_SPINUP && shooterRunning) {
+            double currentRpm = getCurrentRPM();
+            double targetRpm = getCurrentTargetRPM();
+            telemetry.addData("RPM", "%.0f / %.0f (current/target)", currentRpm, targetRpm);
+            telemetry.addData("RPM Stable", isRPMStable() ? "✓ STABLE" : "⚡ Stabilizing");
+            telemetry.addData("RPM Error", "%.0f RPM", Math.abs(currentRpm - targetRpm));
+            if (rpmIsStable) {
+                double stableTime = clock.seconds() - lastStableRpmTime;
+                telemetry.addData("Stable Time", "%.1f / %.1f sec", stableTime, RPM_STABILITY_TIME);
+            }
+        } else if (USE_RPM_SPINUP) {
+            telemetry.addData("RPM", "Shooter stopped");
+        } else {
+            telemetry.addData("RPM", "Time-based spinup (RPM disabled)");
+        }
+        
+        telemetry.addData("=== TIMING ===", "");
+        telemetry.addData("Time Since Last Shot", "%.1f / %.1f sec", getTimeSinceLastShot(), shotInterval);
+        if (!USE_RPM_SPINUP) {
+            telemetry.addData("Spinup Required", "%.1fs", spinupTime);
+        }
+        
+        if (shooterRunning) {
+            double timeRunning = clock.seconds() - shooterStartTime;
+            telemetry.addData("Shooter Running", "%.1fs", timeRunning);
+            if (timeRunning < spinupTime) {
+                telemetry.addData("Spinup Progress", "%.1f%% (%.1fs remaining)", 
+                    (timeRunning / spinupTime) * 100, spinupTime - timeRunning);
+            }
+        }
     }
     
     // ========== AAF (AUTONOMOUS ACTION FRAMEWORK) INTEGRATION ==========
@@ -385,8 +568,9 @@ public class DecodeHelper {
                 }
                 
                 // Handle shooting timing
+                double shotInterval = getCurrentShotInterval();
                 if (!currentlyShooting && isShooterReady() && 
-                    (currentTime - lastShotStartTime >= SHOT_INTERVAL)) {
+                    (currentTime - lastShotStartTime >= shotInterval)) {
                     // Start next shot
                     startFeedServos();
                     currentlyShooting = true;
