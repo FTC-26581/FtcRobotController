@@ -57,11 +57,11 @@ public class DeadWheelOdometryDemo extends LinearOpMode {
         
         try {
             // Method 1: Use default parameters (automatically detected)
-            // positioningHelper.initialize("Webcam 1", true);
-            
+            // positioningHelper.initialize("Webcam 1", true, true);
+
             // Method 2: Use custom parameters for your robot
-            positioningHelper.initialize("Webcam 1", true, TRACK_WIDTH, HORIZONTAL_OFFSET);
-            
+            positioningHelper.initialize("Webcam 1", TRACK_WIDTH, HORIZONTAL_OFFSET);
+
             telemetry.addData("Initialization", "Complete");
             telemetry.addData("Dead Wheel Status", positioningHelper.getOdometryStatus());
             telemetry.addData("", "");
@@ -79,7 +79,7 @@ public class DeadWheelOdometryDemo extends LinearOpMode {
             telemetry.addData("Fallback", "Using motor encoders instead");
             telemetry.update();
             
-            // Fall back to motor encoders
+            // Fall back to motor encoders - use correct method signature
             positioningHelper.initialize("Webcam 1", false);
         }
         
@@ -235,8 +235,8 @@ public class DeadWheelOdometryDemo extends LinearOpMode {
             telemetry.addData("Track Width", "%.2f inches", deadWheels.getTrackWidth());
             telemetry.addData("Horizontal Offset", "%.2f inches", deadWheels.getHorizontalOffset());
             telemetry.addData("Encoder Resolution", "%.1f counts/inch", deadWheels.getCountsPerInch());
-            telemetry.addData("Status", deadWheels.getStatus());
-            
+            telemetry.addData("Status", deadWheels.getSystemStatus());
+
             // Get current encoder readings
             int[] encoders = deadWheels.getRawEncoderValues();
             telemetry.addData("Raw Encoders", "L:%d R:%d H:%d", encoders[0], encoders[1], encoders[2]);

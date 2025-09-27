@@ -195,8 +195,8 @@ public class ExampleAutoWithHelper extends LinearOpMode {
         // Or mix direct APH calls with AutoHelper steps
         autoHelper
             .addStep("Custom movement with direct APH", () -> {
-                // Direct APH call with custom logic
-                return aph.moveTo(currentX + 12, currentY - 6, currentHeading + 45, 0.5, 3000);
+                // Direct APH call with custom logic - use goToPosition method
+                return aph.goToPosition(currentX + 12, currentY - 6, currentHeading + 45, 0.5);
             })
             .executeAll();
     }

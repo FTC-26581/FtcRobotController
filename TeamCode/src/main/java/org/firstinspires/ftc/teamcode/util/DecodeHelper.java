@@ -525,7 +525,7 @@ public class DecodeHelper {
      */
     public java.util.function.Supplier<Boolean> createShootAction(int numShots, boolean keepShooterRunning) {
         return () -> {
-            autoShoot(numShots, keepShooterRunning);
+            autoShoot(numShots, keepShooterRunning, true); // default to long range
             return true; // autoShoot is blocking, so always returns true when complete
         };
     }

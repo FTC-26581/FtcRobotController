@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.samples.templates;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import org.firstinspires.ftc.teamcode.util.AutoHelper;
 
 /**
  * Blank Autonomous Template with Step-Based Control
@@ -41,18 +42,18 @@ public class BlankAutoTemplate extends LinearOpMode {
         // Initialize AutoHelper - Choose your drive mode:
         
         // Option 1: Basic Mechanum Drive (simple, reliable)
-        autoHelper = new AutoHelper(this);
-        autoHelper.initialize(AutoHelper.DriveMode.BASIC_MECHANUM);
-        
+        autoHelper = new AutoHelper(this, hardwareMap, telemetry);
+        autoHelper.initialize("Webcam 1");
+
         // Option 2: Field Relative Drive (maintains orientation relative to field)
-        // autoHelper = new AutoHelper(this);
-        // autoHelper.initialize(AutoHelper.DriveMode.FIELD_RELATIVE);
-        
+        // autoHelper = new AutoHelper(this, hardwareMap, telemetry);
+        // autoHelper.initialize("Webcam 1");
+
         // Option 3: Advanced Positioning (encoder + IMU + AprilTag fusion for maximum precision)
-        // autoHelper = new AutoHelper(this);
-        // autoHelper.initialize(AutoHelper.DriveMode.ADVANCED_POSITIONING, "Webcam 1");
-        // autoHelper.setCurrentPosition(0, 0, 0); // Set starting position
-        
+        // autoHelper = new AutoHelper(this, hardwareMap, telemetry);
+        // autoHelper.initialize("Webcam 1");
+        // // Set starting position if needed: autoHelper.getPositioningHelper().resetPosition(0, 0, 0);
+
         // TODO: Add any additional hardware initialization here
         // Example: servos, sensors, cameras, etc.
         
@@ -60,109 +61,116 @@ public class BlankAutoTemplate extends LinearOpMode {
         telemetry.update();
         
         waitForStart();
-        autoHelper.resetRuntime();
-        
-        // Main autonomous loop
-        while (opModeIsActive()) {
-            
-            // Update position tracking (only needed for advanced positioning)
-            autoHelper.updatePosition();
-            
-            // Execute current step
-            executeStep(autoHelper.getCurrentStep());
-            
-            // Update telemetry
-            autoHelper.updateTelemetry();
-            
-            // Check if autonomous should end
-            if (autoHelper.getCurrentStep() >= getTotalSteps()) {
-                autoHelper.addTelemetry("Status", "Autonomous Complete!");
-                autoHelper.updateTelemetry();
-                break;
-            }
+
+        // Main autonomous loop using AutoHelper's fluent API
+        if (opModeIsActive()) {
+            executeAutonomousSequence();
         }
-        
-        // Clean up resources
-        autoHelper.close();
+    }
+
+    /**
+     * Execute the main autonomous sequence using AutoHelper's fluent API
+     */
+    private void executeAutonomousSequence() {
+        // Use AutoHelper's fluent API for cleaner, more reliable autonomous programming
+        autoHelper
+            // Step 0: Initial wait
+            .waitFor(1000, "Initial wait")
+
+            // Step 1: Drive forward 24 inches
+            .forward(24, "Drive forward 24 inches")
+
+            // Step 2: Strafe right 12 inches
+            .strafeRight(12, "Strafe right 12 inches")
+
+            // Step 3: Turn 90 degrees left
+            .turnBy(-90, "Turn 90 degrees left")
+
+            // Step 4: Move to specific position (if using advanced positioning)
+            .moveTo(36.0, 24.0, 90.0, "Move to scoring position")
+
+            // Step 5: Wait for action (simulate scoring)
+            .waitFor(2000, "Score game piece")
+
+            // Step 6: Return to start area
+            .moveTo(0.0, 0.0, 0.0, "Return to start")
+
+            // Execute all steps
+            .executeAll();
+
+        telemetry.addData("Status", "Autonomous Complete!");
+        telemetry.update();
     }
     
 
     
     /**
      * Main step execution logic - ADD YOUR AUTONOMOUS STEPS HERE
+     * NOTE: This method is optional - the fluent API in executeAutonomousSequence() is recommended
      */
     private void executeStep(int step) {
         switch (step) {
             case 0:
-                // Example: Wait at start
-                if (autoHelper.waitFor(1.0)) {
-                    autoHelper.addTelemetry("Step 0", "Initial wait complete");
-                }
+                // Example: Wait at start - use correct waitFor method (milliseconds, not seconds)
+                telemetry.addData("Step 0", "Initial wait...");
+                sleep(1000); // Simple wait
                 break;
                 
             case 1:
-                // Example: Drive forward 24 inches using encoders
-                if (autoHelper.driveForwardDistance(24, DRIVE_SPEED)) {
-                    autoHelper.addTelemetry("Step 1", "Forward drive complete");
-                }
+                // Example: Drive forward 24 inches - use AutoHelper fluent API
+                telemetry.addData("Step 1", "Moving forward 24 inches");
+                autoHelper.forward(24, "Drive forward 24 inches").executeAll();
                 break;
                 
             case 2:
-                // Example: Strafe right 12 inches using encoders
-                if (autoHelper.strafeRightDistance(12, STRAFE_SPEED)) {
-                    autoHelper.addTelemetry("Step 2", "Strafe right complete");
-                }
+                // Example: Strafe right 12 inches - use AutoHelper fluent API
+                telemetry.addData("Step 2", "Strafing right 12 inches");
+                autoHelper.strafeRight(12, "Strafe right 12 inches").executeAll();
                 break;
                 
             case 3:
-                // Example: Turn 90 degrees using encoders
-                if (autoHelper.turnLeftDegrees(90, TURN_SPEED)) {
-                    autoHelper.addTelemetry("Step 3", "Turn complete");
-                }
+                // Example: Turn 90 degrees - use AutoHelper fluent API
+                telemetry.addData("Step 3", "Turning 90 degrees left");
+                autoHelper.turnBy(-90, "Turn 90 degrees left").executeAll();
                 break;
                 
             case 4:
-                // Example: Timed movement (drive forward for 2 seconds)
-                if (autoHelper.driveForward(2.0, 0.5)) {
-                    autoHelper.addTelemetry("Step 4", "Timed movement complete");
-                }
+                // Example: Timed movement - use direct motor control or simple movement
+                telemetry.addData("Step 4", "Timed movement forward");
+                autoHelper.forward(12, "Timed forward movement").executeAll();
                 break;
                 
             case 5:
-                // Example: More complex movement - drive diagonally
-                if (autoHelper.driveFor(1.5, 0.5, 0.3, 0)) {
-                    autoHelper.addTelemetry("Step 5", "Diagonal movement complete");
-                }
+                // Example: Complex movement using multiple steps
+                telemetry.addData("Step 5", "Complex diagonal movement");
+                autoHelper
+                    .forward(6, "Forward component")
+                    .strafeRight(6, "Right component")
+                    .executeAll();
                 break;
                 
             case 6:
-                // Example: Advanced positioning - go to exact field coordinates
-                // (Only works if initialized with ADVANCED_POSITIONING mode)
-                if (autoHelper.goToPosition(36.0, 24.0, 90.0, DRIVE_SPEED)) {
-                    autoHelper.addTelemetry("Step 6", "Precise position reached");
-                    autoHelper.addTelemetry("Position", "X:%.1f Y:%.1f H:%.1f°", 
-                            autoHelper.getCurrentX(), autoHelper.getCurrentY(), autoHelper.getCurrentHeading());
-                }
+                // Example: Move to specific position (requires AdvancedPositioningHelper)
+                telemetry.addData("Step 6", "Moving to precise position");
+                autoHelper.moveTo(36.0, 24.0, 90.0, "Move to scoring position").executeAll();
                 break;
                 
             case 7:
                 // Example: Precise rotation to exact heading
-                if (autoHelper.rotateToHeading(180.0, TURN_SPEED)) {
-                    autoHelper.addTelemetry("Step 7", "Precise rotation complete");
-                    autoHelper.addTelemetry("Heading", "%.1f°", autoHelper.getCurrentHeading());
-                }
+                telemetry.addData("Step 7", "Rotating to 180 degrees");
+                autoHelper.turnTo(180.0, "Rotate to 180 degrees").executeAll();
                 break;
                 
             // TODO: Add more steps as needed
             // case 8:
             //     if (yourCustomFunction()) {
-            //         autoHelper.addTelemetry("Step 8", "Custom action complete");
+            //         telemetry.addData("Step 8", "Custom action complete");
             //     }
             //     break;
                 
             default:
-                // End of autonomous - this will exit the main loop
-                autoHelper.nextStep();
+                // End of autonomous - mark complete
+                telemetry.addData("Status", "All steps complete");
                 break;
         }
     }
@@ -187,8 +195,9 @@ public class BlankAutoTemplate extends LinearOpMode {
         // TODO: Add your custom code here
         // Example: Move servos, wait for sensors, etc.
         
-        // For now, just wait 1 second as an example
-        return autoHelper.waitFor(1.0);
+        // For now, just wait 1 second as an example using correct method
+        sleep(1000); // Use LinearOpMode's sleep method
+        return true;
     }
     
     /**
@@ -199,8 +208,9 @@ public class BlankAutoTemplate extends LinearOpMode {
         // TODO: Add your custom code here
         // Example: Move lift, activate servos, etc.
         
-        // For now, just wait 1 second as an example
-        return autoHelper.waitFor(1.0);
+        // For now, just wait 1 second as an example using correct method
+        sleep(1000); // Use LinearOpMode's sleep method
+        return true;
     }
     
     // TODO: Add more custom functions as needed

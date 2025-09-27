@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.samples.templates;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import org.firstinspires.ftc.teamcode.util.AutoHelper;
 
 /**
  * Simple Autonomous Template - Ready to Use
@@ -30,58 +31,51 @@ public class SimpleAutoTemplate extends LinearOpMode {
     public void runOpMode() {
         
         // Initialize AutoHelper - it handles all hardware setup automatically
-        autoHelper = new AutoHelper(this);
-        autoHelper.initialize(); // Uses basic mechanum drive by default
-        
+        autoHelper = new AutoHelper(this, hardwareMap, telemetry);
+        autoHelper.initialize("Webcam 1"); // Initialize with camera support
+
         // TODO: Add any additional hardware initialization here if needed
         
-        autoHelper.addTelemetry("Status", "Initialized - Ready to Start");
-        autoHelper.updateTelemetry();
-        
+        telemetry.addData("Status", "Initialized - Ready to Start");
+        telemetry.update();
+
         waitForStart();
-        autoHelper.resetRuntime();
-        
+
         // ========================================
         // ADD YOUR AUTONOMOUS COMMANDS HERE
         // ========================================
         
-        // Example autonomous sequence (uncomment to use):
-        /*
-        // Drive forward for 2 seconds
-        autoHelper.driveForward(2.0, DRIVE_SPEED);
-        
-        // Turn right for 1 second
-        autoHelper.turnRight(1.0, TURN_SPEED);
-        
-        // Strafe left for 1.5 seconds
-        autoHelper.strafeLeft(1.5, DRIVE_SPEED);
-        
-        // Wait for 1 second
-        autoHelper.waitFor(1.0);
-        */
-        
+        // Example autonomous sequence using AutoHelper's fluent API:
+        autoHelper
+            // Drive forward 24 inches
+            .forward(24, "Drive forward 24 inches")
+
+            // Turn right 90 degrees
+            .turnBy(90, "Turn right 90 degrees")
+
+            // Strafe left 12 inches
+            .strafeLeft(12, "Strafe left 12 inches")
+
+            // Wait for 1 second
+            .waitFor(1000, "Wait 1 second")
+
+            // Execute all movements
+            .executeAll();
+
         // Your autonomous code goes here - replace the example above
-        // Available functions:
-        // - autoHelper.driveForward(seconds, speed)
-        // - autoHelper.driveBackward(seconds, speed)
-        // - autoHelper.strafeLeft(seconds, speed)
-        // - autoHelper.strafeRight(seconds, speed)
-        // - autoHelper.turnLeft(seconds, speed)
-        // - autoHelper.turnRight(seconds, speed)
-        // - autoHelper.waitFor(seconds)
-        // - autoHelper.driveFor(seconds, forward, strafe, rotate)
-        //
-        // For encoder-based movement:
-        // - autoHelper.driveForwardDistance(inches, speed)
-        // - autoHelper.driveBackwardDistance(inches, speed)
-        // - autoHelper.strafeLeftDistance(inches, speed)
-        // - autoHelper.strafeRightDistance(inches, speed)
-        // - autoHelper.turnLeftDegrees(degrees, speed)
-        // - autoHelper.turnRightDegrees(degrees, speed)
-        
-        
-        autoHelper.addTelemetry("Status", "Autonomous Complete!");
-        autoHelper.updateTelemetry();
+        // Available AutoHelper fluent API functions:
+        // - .forward(inches, "description")
+        // - .back(inches, "description")
+        // - .strafeLeft(inches, "description")
+        // - .strafeRight(inches, "description")
+        // - .turnBy(degrees, "description")  // positive = right, negative = left
+        // - .turnTo(heading, "description")  // absolute heading
+        // - .moveTo(x, y, heading, "description")  // field coordinates
+        // - .waitFor(milliseconds, "description")
+        // - .executeAll()  // Execute all queued movements
+
+        telemetry.addData("Status", "Autonomous Complete!");
+        telemetry.update();
     }
 
 }

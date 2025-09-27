@@ -73,7 +73,8 @@ public class DeadWheelTuning extends LinearOpMode {
         positioningHelper = new AdvancedPositioningHelper(this);
         
         try {
-            positioningHelper.initialize(null, true, trackWidth, horizontalOffset);
+            // Use the correct initialize method signature for custom track width and horizontal offset
+            positioningHelper.initialize(null, trackWidth, horizontalOffset);
             deadWheelOdometry = positioningHelper.getDeadWheelOdometry();
             
             telemetry.addData("Initialization", "Complete");

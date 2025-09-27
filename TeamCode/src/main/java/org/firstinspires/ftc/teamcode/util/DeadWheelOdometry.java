@@ -583,28 +583,38 @@ public class DeadWheelOdometry {
         }
     }
     
-    // ========================================
-    // TUNING AND CONFIGURATION
-    // ========================================
-    
     /**
-     * Set track width (distance between parallel dead wheels)
-     * MUST BE TUNED for your specific robot
+     * Get raw encoder positions as integer array for tuning purposes
+     * @return int array [left, right, horizontal] for traditional system or [x, y, 0] for Pinpoint
      */
-    public void setTrackWidth(double trackWidth) {
-        this.trackWidth = trackWidth;
-        telemetry.addData("Track Width Updated", String.format("%.3f\"", trackWidth));
+    public int[] getRawEncoderValues() {
+        if (!isInitialized) return new int[]{0, 0, 0};
+
+        switch (systemType) {
+            case THREE_WHEEL_TRADITIONAL:
+                return new int[]{
+                    leftEncoder.getCurrentPosition(),
+                    rightEncoder.getCurrentPosition(),
+                    horizontalEncoder.getCurrentPosition()
+                };
+            case PINPOINT_TWO_POD:
+                int[] pinpointValues = pinpointAdapter.getRawEncoderValues();
+                return new int[]{pinpointValues[0], pinpointValues[1], 0}; // Add 0 for compatibility
+            case NONE_DETECTED:
+            default:
+                return new int[]{0, 0, 0};
+        }
     }
-    
+
     /**
-     * Set horizontal wheel forward offset from robot center
-     * MUST BE TUNED for your specific robot
+     * Get counts per inch conversion factor for traditional dead wheels
+     * Used for tuning calculations and diagnostics
+     * @return encoder counts per inch of wheel movement
      */
-    public void setHorizontalOffset(double horizontalOffset) {
-        this.horizontalOffset = horizontalOffset;
-        telemetry.addData("Horizontal Offset Updated", String.format("%.3f\"", horizontalOffset));
+    public double getCountsPerInch() {
+        return COUNTS_PER_INCH;
     }
-    
+
     /**
      * Get current track width
      */

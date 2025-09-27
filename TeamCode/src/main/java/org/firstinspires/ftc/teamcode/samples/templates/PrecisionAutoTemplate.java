@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.samples.templates;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import org.firstinspires.ftc.teamcode.util.AutoHelper;
 
 /**
  * Precision Auto Template - Using Advanced Positioning
@@ -52,129 +53,118 @@ public class PrecisionAutoTemplate extends LinearOpMode {
     public void runOpMode() {
         
         // Initialize with advanced positioning and camera
-        autoHelper = new AutoHelper(this);
-        autoHelper.initialize(AutoHelper.DriveMode.ADVANCED_POSITIONING, "Webcam 1");
-        
-        // Set starting position (place robot precisely at these coordinates)
-        autoHelper.setCurrentPosition(START_X, START_Y, START_HEADING);
-        
+        autoHelper = new AutoHelper(this, hardwareMap, telemetry);
+        autoHelper.initialize("Webcam 1");
+
         telemetry.addData("Status", "Precision Auto Ready");
         telemetry.addData("Starting Position", "X:%.1f Y:%.1f H:%.1f°", START_X, START_Y, START_HEADING);
         telemetry.addData("Camera", "Webcam 1 - AprilTag positioning active");
         telemetry.update();
         
         waitForStart();
-        autoHelper.resetRuntime();
-        
-        // Main autonomous sequence
-        while (opModeIsActive()) {
-            
-            // Continuously update position tracking
-            autoHelper.updatePosition();
-            
-            // Execute current step
-            executeStep(autoHelper.getCurrentStep());
-                
-            // Update telemetry
-            autoHelper.updateTelemetry();
-            
-            // Check completion
-            if (autoHelper.getCurrentStep() >= getTotalSteps()) {
-                break;
-            }
+
+        // Execute the autonomous sequence using AutoHelper's fluent API
+        if (opModeIsActive()) {
+            executePrecisionSequence();
         }
-        
-        // Clean up
-        autoHelper.close();
+    }
+
+    /**
+     * Execute the precision autonomous sequence using AutoHelper's fluent API
+     */
+    private void executePrecisionSequence() {
+        autoHelper
+            // Initial calibration wait
+            .waitFor(1000, "System calibration")
+
+            // Move to game piece pickup position
+            .moveTo(PICKUP_X, PICKUP_Y, PICKUP_HEADING, "Move to pickup position")
+
+            // Precise alignment for pickup
+            .moveTo(PICKUP_X, PICKUP_Y - 2, PICKUP_HEADING, "Precise pickup alignment")
+
+            // Wait for pickup actions
+            .waitFor(1500, "Pick up game piece")
+
+            // Move to scoring position
+            .moveTo(SCORING_X, SCORING_Y, SCORING_HEADING, "Move to scoring position")
+
+            // Precise scoring alignment
+            .turnTo(SCORING_HEADING, "Scoring alignment")
+
+            // Wait for scoring to complete
+            .waitFor(2000, "Score game piece")
+
+            // Move to park position
+            .moveTo(PARK_X, PARK_Y, PARK_HEADING, "Move to park")
+
+            // Final wait
+            .waitFor(1000, "Autonomous complete")
+
+            // Execute all steps
+            .executeAll();
+
+        telemetry.addData("Status", "Autonomous Complete!");
+        telemetry.update();
     }
     
     /**
-     * Main autonomous sequence
+     * Alternative step-based execution (for reference - fluent API above is recommended)
+     * NOTE: Many of these methods don't exist in AutoHelper - use fluent API instead
      */
     private void executeStep(int step) {
         switch (step) {
             case 0:
                 // Initial positioning and calibration
-                if (autoHelper.waitFor(1.0)) {
-                    autoHelper.addTelemetry("Step 0", "System calibrated");
-                    if (autoHelper.hasAprilTagFix()) {
-                        autoHelper.addTelemetry("AprilTag", "Position corrected");
-                    }
-                }
+                telemetry.addData("Step 0", "System calibrated");
+                sleep(1000);
                 break;
                 
             case 1:
                 // Move to game piece pickup position
-                if (autoHelper.goToPosition(PICKUP_X, PICKUP_Y, PICKUP_HEADING, FAST_SPEED)) {
-                    autoHelper.addTelemetry("Step 1", "Reached pickup position");
-                    
-                    // TODO: Add your game piece pickup code here
-                    // Example: activateIntake(), lowerArm(), etc.
-                }
+                telemetry.addData("Step 1", "Moving to pickup position");
+                autoHelper.moveTo(PICKUP_X, PICKUP_Y, PICKUP_HEADING, "Move to pickup").executeAll();
                 break;
                 
             case 2:
-                // Precise alignment for pickup (if needed)
-                if (autoHelper.goToPosition(PICKUP_X, PICKUP_Y - 2, PICKUP_HEADING, PRECISION_SPEED)) {
-                    autoHelper.addTelemetry("Step 2", "Precise pickup alignment");
-                    
-                    // TODO: Add pickup actions here
-                    // Example: waitForGamePieceDetected(), closeGripper(), etc.
-                }
+                // Precise alignment for pickup
+                telemetry.addData("Step 2", "Precise pickup alignment");
+                autoHelper.moveTo(PICKUP_X, PICKUP_Y - 2, PICKUP_HEADING, "Precise alignment").executeAll();
                 break;
                 
             case 3:
                 // Move to scoring position
-                if (autoHelper.goToPosition(SCORING_X, SCORING_Y, SCORING_HEADING, FAST_SPEED)) {
-                    autoHelper.addTelemetry("Step 3", "Reached scoring position");
-                    
-                    // TODO: Add pre-scoring preparation here
-                    // Example: raiseArm(), prepareScoring(), etc.
-                }
+                telemetry.addData("Step 3", "Moving to scoring position");
+                autoHelper.moveTo(SCORING_X, SCORING_Y, SCORING_HEADING, "Move to scoring").executeAll();
                 break;
                 
             case 4:
                 // Precise scoring alignment
-                if (autoHelper.rotateToHeading(SCORING_HEADING, TURN_SPEED)) {
-                    autoHelper.addTelemetry("Step 4", "Scoring alignment complete");
-                    
-                    // TODO: Add scoring actions here
-                    // Example: extendArm(), releaseGamePiece(), etc.
-                }
+                telemetry.addData("Step 4", "Scoring alignment");
+                autoHelper.turnTo(SCORING_HEADING, "Scoring alignment").executeAll();
                 break;
                 
             case 5:
                 // Wait for scoring to complete
-                if (autoHelper.waitFor(2.0)) {
-                    autoHelper.addTelemetry("Step 5", "Scoring complete");
-                    
-                    // TODO: Add post-scoring actions
-                    // Example: retractArm(), resetScoringMechanism(), etc.
-                }
+                telemetry.addData("Step 5", "Scoring complete");
+                sleep(2000);
                 break;
                 
             case 6:
                 // Move to park position
-                if (autoHelper.goToPosition(PARK_X, PARK_Y, PARK_HEADING, FAST_SPEED)) {
-                    autoHelper.addTelemetry("Step 6", "Parked successfully");
-                    
-                    // Calculate final accuracy
-                    double distanceError = autoHelper.getDistanceToTarget(PARK_X, PARK_Y);
-                    autoHelper.addTelemetry("Final Accuracy", "%.2f inches", distanceError);
-                }
+                telemetry.addData("Step 6", "Moving to park");
+                autoHelper.moveTo(PARK_X, PARK_Y, PARK_HEADING, "Move to park").executeAll();
                 break;
                 
             case 7:
                 // Final status report
-                if (autoHelper.waitFor(1.0)) {
-                    autoHelper.addTelemetry("Status", "Autonomous Complete!");
-                    autoHelper.addTelemetry("Total Time", "%.1f seconds", autoHelper.getRuntime());
-                    autoHelper.addTelemetry("AprilTag Used", autoHelper.hasAprilTagFix() ? "YES" : "NO");
-                }
+                telemetry.addData("Status", "Autonomous Complete!");
+                sleep(1000);
                 break;
                 
             default:
-                autoHelper.nextStep();
+                // End of sequence
+                telemetry.addData("Status", "All steps complete");
                 break;
         }
     }
@@ -197,7 +187,8 @@ public class PrecisionAutoTemplate extends LinearOpMode {
     private boolean activateIntake() {
         // TODO: Implement your intake control
         // Example: intakeMotor.setPower(1.0);
-        return autoHelper.waitFor(1.0); // Placeholder timing
+        sleep(1000); // Use LinearOpMode's sleep method
+        return true;
     }
     
     /**
@@ -206,17 +197,15 @@ public class PrecisionAutoTemplate extends LinearOpMode {
     private boolean scoreGamePiece() {
         // TODO: Implement your scoring mechanism
         // Example: scoringServo.setPosition(SCORE_POSITION);
-        return autoHelper.waitFor(1.5); // Placeholder timing
+        sleep(1500); // Use LinearOpMode's sleep method
+        return true;
     }
     
     /**
      * Example: Check if AprilTag correction is needed
      */
     private void checkPositionCorrection() {
-        if (autoHelper.hasAprilTagFix()) {
-            autoHelper.addTelemetry("Position Correction", "AprilTag active - high accuracy");
-        } else {
-            autoHelper.addTelemetry("Position Correction", "Using encoders + IMU only");
-        }
+        // Access positioning helper through AutoHelper if needed
+        telemetry.addData("Position Correction", "Check AprilTag status in telemetry");
     }
 }

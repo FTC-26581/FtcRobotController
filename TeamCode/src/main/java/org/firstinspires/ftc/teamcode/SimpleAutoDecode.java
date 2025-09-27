@@ -4,7 +4,7 @@
  * Copy this file and modify for your specific autonomous routine
  */
 
-package org.firstinspires.ftc.teamcode.samples.templates;
+package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -12,12 +12,7 @@ import org.firstinspires.ftc.teamcode.util.AutoHelper;
 import org.firstinspires.ftc.teamcode.util.DecodeHelper;
 
 /**
- * Template for DECODE autonomous with integrated shooting
- * 
- * This template shows the most common patterns for using DecodeHelper with AAF:
- * - Basic shooting sequences
- * - Movement with shooting
- * - Shooter management
+ * Simple Auto for DECODE autonomous with integrated shooting
  */
 @Autonomous(name="Simple Auto Decode", group="Templates")
 public class SimpleAutoDecode extends LinearOpMode {
@@ -109,6 +104,13 @@ public class SimpleAutoDecode extends LinearOpMode {
  * - Heading 0° faces toward Blue Alliance (+Y)
  * 
  * COMMON POSITIONS:
+ *   For DECODE SEASON:
+ *   • Red Goal (ID 24): (-58.3727, 55.6425, 29.5) heading 315° (back-right corner)
+ *   • Blue Goal (ID 20): (-58.3727, -55.6425, 29.5) heading 45° (back-left corner)
+ * - Red Alliance Goal: (-58, 55)
+ * - Blue Alliance Goal: (-58, -55)
+ * - Starting positions: Check your alliance and starting tile
+ *   For INTO THE DEEP SEASON:
  * - Basket area: (24, 36) to (36, 48)
  * - Specimen pickup: (12, 60) area
  * - Starting positions: Check your alliance and starting tile
